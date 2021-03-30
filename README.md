@@ -1,9 +1,5 @@
 # NDParticleML
-This a reposity with modifications made to the simple neural network found at
-
-[Base Model](https://colab.research.google.com/drive/1wpLKRUaBxlfWDmyL9czZ8WP-_4W60Vxh?usp=sharing)
-
-This model is tries to learn the function f(x)=x for a set of 3 inputs. 
+This a reposity with modifications made to the simple neural network found [here](https://colab.research.google.com/drive/1wpLKRUaBxlfWDmyL9czZ8WP-_4W60Vxh?usp=sharing). This model is tries to learn the function f(x)=x for a set of 3 inputs. 
 
 ### To-Do List
 - [x] Modify the model to learn the function f(x)=x<sup>2</sup> for a set of 3 inputs
