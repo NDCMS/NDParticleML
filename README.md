@@ -6,4 +6,4 @@ This a reposity with modifications made to the simple neural network found [here
 * How long does it take to train each function?
 * Does it work over the full range of inputs? 
   * How do you characterize the '***full range***' of a function?
-  * Will the function change when the range changes?
+  * Will the '***goodness***' of a function change when the range changes?
