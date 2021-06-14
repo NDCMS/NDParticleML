@@ -1,6 +1,7 @@
 # %matplotlib notebook
 import torch
 import numpy as np
+import numpy.ma as ma
 from mpl_toolkits import mplot3d
 import matplotlib.pyplot as plt
 import math
@@ -30,7 +31,7 @@ def rel_err(pred, act):
     """
     return abs(abs_err(pred, act)/act)
 
-# Check what proportion of the predictions falls within 0.01 absolute accuracy or 1% relative accuracy
+# Check if a prediction is within 0.01 absolute accuracy or 1% relative accuracy
 def accu_test(prediction, actual):
     """
     Tests if two numbers are close enough (0.01 absolute error or 1% relative error).
@@ -64,11 +65,11 @@ def create_model(inputs, outputs, hidden_nodes=100, layer_num = 0):
     return model.cuda()
 
 # Train network
-def train_network(model, hidden_nodes, hidden_layers, inputs, outputs, test_inputs, test_outputs, graph_data, analysis_data, miniBatchSize = 100., num_epochs = 500, show_progress = True):
+def train_network(model, hidden_nodes, hidden_layers, inputs, outputs, test_inputs, test_outputs, miniBatchSize = 100., num_epochs = 500, show_progress = True):
     """
     Trains a network of a given architecture.
 
-    Inputs: model (Pytorch sequential container), hidden_nodes (the number of nodes in each hidden layer (the same for all layers); integer), hidden_layers (integer), inputs (training input data; Pytorch tensor), outputs (training output data; Pytorch tensor), test_inputs (testing input data; Pytorch tensor), test_outputs (testing output data; Pytorch tensor), graph_data (dictionary), analysis_data (dictionary), miniBatchSize (integer), num_epochs (integer), show_progress (boolean)
+    Inputs: model (Pytorch sequential container), hidden_nodes (the number of nodes in each hidden layer (the same for all layers); integer), hidden_layers (integer), inputs (training input data; Pytorch tensor), outputs (training output data; Pytorch tensor), test_inputs (testing input data; Pytorch tensor), test_outputs (testing output data; Pytorch tensor), analysis_data (dictionary), miniBatchSize (integer), num_epochs (integer), show_progress (boolean)
 
     Outputs: graph_data (dictionary)
     """
@@ -127,17 +128,6 @@ def train_network(model, hidden_nodes, hidden_layers, inputs, outputs, test_inpu
             
             with torch.no_grad():
                 model.eval()
-        
-        # Things that need to be done every 50 epochs
-        if epoch%50 == 0 and epoch != 0:
-            with torch.no_grad():
-                model.eval()
-                analysis_data['nodes'].append(hidden_nodes)
-                analysis_data['layers'].append(hidden_layers)
-                analysis_data['epochs'].append(epoch)
-                analysis_data['time'].append(graph_data['time_vals'][epoch])
-                analysis_data['accuracy'].append(graph_data['accu_vals'][epoch])
-                
                 
         model.train()
                 
@@ -153,9 +143,6 @@ def train_network(model, hidden_nodes, hidden_layers, inputs, outputs, test_inpu
     prediction_temp = model(test_inputs)
     residual = test_outputs - prediction_temp
     graph_data['out_residual_vals'] = np.append(graph_data['out_residual_vals'], residual.cpu().detach().numpy())
-    for i in range(total_num):
-        graph_data['2D_residual_x'][i] = test_inputs[i][0]
-        graph_data['2D_residual_y'][i] = test_inputs[i][1]
     
     # Data for the weights and biases histograms
     model_param  = model.state_dict()
@@ -194,8 +181,6 @@ def new_graph_data(total_num, epochs):
     graph_data['accu_out_colors'] = np.full(epochs * total_num, 'r')
     graph_data['accu_out_epochs'] = np.zeros(epochs * total_num)
     graph_data['out_residual_vals'] = np.array([])
-    graph_data['2D_residual_x'] = np.zeros(total_num)
-    graph_data['2D_residual_y'] = np.zeros(total_num)
     graph_data['weights'] = np.array([])
     graph_data['biases'] = np.array([])
 
@@ -211,11 +196,11 @@ def new_analysis_data():
     Outputs: analysis_data (dictionary)
     """
     analysis_data = {}
-    analysis_data['nodes'] = []
-    analysis_data['layers'] = []
-    analysis_data['epochs'] = []
-    analysis_data['time'] = []
-    analysis_data['accuracy'] = []
+    analysis_data['nodes'] = np.array([])
+    analysis_data['layers'] = np.array([])
+    analysis_data['epochs'] = np.array([])
+    analysis_data['time'] = np.array([])
+    analysis_data['accuracy'] = np.array([])
 
     return analysis_data
 
@@ -230,16 +215,14 @@ def new_graphs():
     """
     fig_loss, ax_loss = plt.subplots()
     fig_accu, ax_accu = plt.subplots()
-    fig_accu_out, ax_accu_out = plt.subplots()
+    fig_accu_out, (ax_out_freq, ax_accu_out) = plt.subplots(nrows=1, ncols=2)
     fig_out_residual, ax_out_residual = plt.subplots()
-    fig_2D_residual = plt.figure()
-    ax_2D_residual = fig_2D_residual.add_subplot(projection='3d')
     fig_histograms, (ax_weights, ax_biases) = plt.subplots(nrows=1, ncols=2)
 
-    return {'fig_loss': fig_loss, 'ax_loss': ax_loss, 'fig_accu': fig_accu, 'ax_accu': ax_accu, 'fig_accu_out': fig_accu_out, 'ax_accu_out': ax_accu_out, 'fig_out_residual': fig_out_residual, 'ax_out_residual': ax_out_residual, 'fig_2D_residual': fig_2D_residual, 'ax_2D_residual': ax_2D_residual, 'fig_histograms': fig_histograms, 'ax_weights': ax_weights, 'ax_biases': ax_biases}
+    return {'fig_loss': fig_loss, 'ax_loss': ax_loss, 'fig_accu': fig_accu, 'ax_accu': ax_accu, 'fig_accu_out': fig_accu_out, 'ax_out_freq': ax_out_freq, 'ax_accu_out': ax_accu_out, 'fig_out_residual': fig_out_residual, 'ax_out_residual': ax_out_residual, 'fig_histograms': fig_histograms, 'ax_weights': ax_weights, 'ax_biases': ax_biases}
 
 # Do the graphing
-def graphing(graphs, graph_data):
+def graphing(graphs, graph_data, total_num, epochs, accu_out_resolution=100):
     """
     Does the graphing.
 
@@ -247,13 +230,46 @@ def graphing(graphs, graph_data):
 
     Outputs: graphs (dictionary)
     """
+    test_outputs = graph_data['test_outputs'].cpu().detach().numpy().flatten()
+
     graphs['ax_accu'].plot(graph_data['accu_epochs'], graph_data['accu_vals'], 'b-')
     graphs['ax_accu'].set_xlabel('Epochs')
     graphs['ax_accu'].set_ylabel('Accuracy')
-                                    
-    graphs['ax_accu_out'].scatter(graph_data['accu_out_epochs'], graph_data['accu_out_vals'], c=graph_data['accu_out_colors'], s=1)
+
+    # Calculate accuracy for each region
+    max_out = test_outputs.max()
+    min_out = test_outputs.min()
+    max_graph = max_out + (max_out - min_out) / 100
+    min_graph = min_out - (max_out - min_out) / 100
+    grid = np.linspace(min_graph, max_graph, accu_out_resolution+1)
+    grid_size = (max_graph - min_graph) / accu_out_resolution
+    grid_accu_tally = np.zeros((accu_out_resolution, epochs, 2))
+    grid_accu = ma.array(np.zeros((accu_out_resolution, epochs))) # Masked array
+    for i in range(epochs):
+        for j in range(total_num):
+            grid_num = int((graph_data['accu_out_vals'][i*total_num + j] - min_graph) / grid_size)
+            if graph_data['accu_out_colors'][i*total_num + j] == 'b':
+                grid_accu_tally[grid_num][i][0] += 1
+            grid_accu_tally[grid_num][i][1] += 1
+    for i in range(accu_out_resolution):
+        for j in range(epochs):
+            if grid_accu_tally[i][j][1] == 0:
+                grid_accu[i, j] = ma.masked # Possible matplotlib bug, [i][j] doesn't work but [i,j] does.
+            else:
+                grid_accu[i][j] = grid_accu_tally[i][j][0] / grid_accu_tally[i][j][1]
+    im = graphs['ax_accu_out'].pcolormesh(np.arange(-0.5, epochs, 1), grid, grid_accu)
     graphs['ax_accu_out'].set_xlabel('Epochs')
-    graphs['ax_accu_out'].set_ylabel('Outputs (Red=inaccurate, Blue=accurate)')
+    graphs['ax_accu_out'].set_ylabel('Outputs')
+    graphs['fig_accu_out'].colorbar(im, ax=graphs['ax_accu_out'], label='Accuracy')
+    # graphs['ax_accu_out'].scatter(graph_data['accu_out_epochs'], graph_data['accu_out_vals'], c=graph_data['accu_out_colors'], s=1)
+    # graphs['ax_accu_out'].set_xlabel('Epochs')
+    # graphs['ax_accu_out'].set_ylabel('Outputs (Red=inaccurate, Blue=accurate)')
+
+    graphs['ax_out_freq'].hist(test_outputs, bins=grid, orientation='horizontal', color='b')
+    graphs['ax_out_freq'].set_xlabel('Outputs')
+    graphs['ax_out_freq'].set_ylabel('Frequency')
+    graphs['ax_out_freq'].margins(0)
+    graphs['fig_accu_out'].tight_layout()
 
     train_loss_line, = graphs['ax_loss'].plot(graph_data['train_loss_epochs'], graph_data['train_loss_vals'], 'b-', linewidth=1)
     test_loss_line, = graphs['ax_loss'].plot(graph_data['test_loss_epochs'], graph_data['test_loss_vals'], 'g-', linewidth=1)
@@ -262,22 +278,19 @@ def graphing(graphs, graph_data):
     graphs['ax_loss'].set_ylabel('Loss (MSE)')
     graphs['ax_loss'].set_yscale('log')
 
-    graphs['ax_out_residual'].scatter(graph_data['test_outputs'].cpu().detach().numpy(), graph_data['out_residual_vals'], c='b', s=1)
+    h = graphs['ax_out_residual'].hist2d(test_outputs, graph_data['out_residual_vals'])
     graphs['ax_out_residual'].set_xlabel('True Outputs')
     graphs['ax_out_residual'].set_ylabel('Residual (actual - prediction)')
-
-    graphs['ax_2D_residual'].scatter(graph_data['2D_residual_x'], graph_data['2D_residual_y'], graph_data['out_residual_vals'], c='b', s=1)
-    graphs['ax_2D_residual'].set_xlabel('x-coordinate Input')
-    graphs['ax_2D_residual'].set_ylabel('y-coordinate Input')
-    graphs['ax_2D_residual'].set_zlabel('Residual (actual - prediction)')
+    graphs['fig_out_residual'].colorbar(h[3], ax=graphs['ax_out_residual'], label='Frequency')
 
     graphs['ax_weights'].hist(graph_data['weights'], color='b')
     graphs['ax_weights'].set_xlabel('Weights')
-    graphs['ax_weights'].set_ylabel('# of Instances')
+    graphs['ax_weights'].set_ylabel('Frequency')
 
     graphs['ax_biases'].hist(graph_data['biases'], color='b')
     graphs['ax_biases'].set_xlabel('Biases')
-    graphs['ax_biases'].set_ylabel('# of Instances')
+    graphs['ax_biases'].set_ylabel('Frequency')
+    graphs['fig_histograms'].tight_layout()
 
     return graphs
 
@@ -294,5 +307,60 @@ def show_graphs(graphs):
     graphs['fig_accu']
     graphs['fig_accu_out']
     graphs['fig_out_residual']
-    graphs['fig_2D_residual']
     graphs['fig_histograms']
+
+# Analyze NN
+def analyze(param_list, trials, inputs, outputs, test_inputs, test_outputs, miniBatchSize = 100.):
+    """
+    Tests networks with given hyperparameters.
+
+    Inputs: param_list (list), trials (integer), inputs (training input data; Pytorch tensor), outputs (training output data; Pytorch tensor), test_inputs (testing input data; Pytorch tensor), test_outputs (testing output data; Pytorch tensor), analysis_data (dictionary), miniBatchSize (integer)
+
+    Outputs: analysis_data (dictionary)
+    """
+    analysis_data = new_analysis_data()
+    for i in param_list:
+        for j in range(trials):
+            model = create_model(inputs, outputs, i[0], i[1])
+            graph_data = train_network(model, i[0], i[1], inputs, outputs, test_inputs, test_outputs, miniBatchSize, i[2], False)
+            analysis_data['nodes'] = np.append(analysis_data['nodes'], np.full(i[2], i[0]))
+            analysis_data['layers'] = np.append(analysis_data['layers'], np.full(i[2], i[1]))
+            analysis_data['epochs'] = np.append(analysis_data['epochs'], graph_data['accu_epochs'])
+            analysis_data['time'] = np.append(analysis_data['time'], graph_data['time_vals'])
+            analysis_data['accuracy'] = np.append(analysis_data['accuracy'], graph_data['accu_vals'])
+    return analysis_data
+
+# New analysis graphs (figs, axes, etc.)
+def new_analysis_graphs():
+    """
+    Creates new analysis graphs.
+
+    Inputs: None
+
+    Outputs: analysis_graphs (dictionary)
+    """
+    fig_analysis, ax_analysis = plt.subplots()
+
+    return {'fig_analysis': fig_analysis, 'ax_analysis': ax_analysis}
+
+# Graph the data from NN analysis
+def analysis_graphing(analysis_graphs, analysis_data, param_list, trials):
+    """
+    Does the analysis graphing.
+
+    Inputs: analysis_graphs (dictionary), analysis_data (dictionary)
+
+    Outputs: analysis_graphs (dictionary)
+    """
+    analysis_graphs['ax_analysis'].set_xlabel('Time (s)')
+    analysis_graphs['ax_analysis'].set_ylabel('Accuracy')
+    counter = 0
+    for i in param_list:
+        first_line = analysis_graphs['ax_analysis'].plot(analysis_data['time'][counter: counter+i[2]], analysis_data['accuracy'][counter: counter+i[2]], label=str(i))
+        counter += i[2]
+        for j in range(trials - 1):
+            analysis_graphs['ax_analysis'].plot(analysis_data['time'][counter: counter+i[2]], analysis_data['accuracy'][counter: counter+i[2]], color=first_line[0].get_color())
+            counter += i[2]
+    analysis_graphs['ax_analysis'].legend()
+
+    return analysis_graphs
