@@ -266,8 +266,8 @@ def graphing(graphs, graph_data, total_num, epochs, accu_out_resolution=100, out
     # graphs['ax_accu_out'].set_ylabel('Outputs (Red=inaccurate, Blue=accurate)')
 
     graphs['ax_out_freq'].hist(test_outputs, bins=grid, orientation='horizontal', color='b')
-    graphs['ax_out_freq'].set_xlabel('Outputs')
-    graphs['ax_out_freq'].set_ylabel('Frequency')
+    graphs['ax_out_freq'].set_xlabel('Frequency')
+    graphs['ax_out_freq'].set_ylabel('Outputs')
     graphs['ax_out_freq'].margins(0)
     graphs['fig_accu_out'].tight_layout()
 
