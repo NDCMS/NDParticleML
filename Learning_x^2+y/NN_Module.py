@@ -65,7 +65,7 @@ def create_model(inputs, outputs, hidden_nodes=100, layer_num = 0):
     return model.cuda()
 
 # Train network
-def train_network(model, hidden_nodes, hidden_layers, inputs, outputs, test_inputs, test_outputs, miniBatchSize = 100., num_epochs = 500, show_progress = True):
+def train_network(model, hidden_nodes, hidden_layers, inputs, outputs, test_inputs, test_outputs, miniBatchSize = 100., num_epochs = 500, learning_rate = 1e-4, weight_decay = 1e-5, show_progress = True):
     """
     Trains a network of a given architecture.
 
@@ -88,7 +88,7 @@ def train_network(model, hidden_nodes, hidden_layers, inputs, outputs, test_inpu
 
     # Set up the training functions
     lossFunc = torch.nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(),lr=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(),lr=learning_rate, weight_decay = weight_decay)
 
     # Initialize graph data
     graph_data = new_graph_data(total_num, num_epochs)
@@ -222,7 +222,7 @@ def new_graphs():
     return {'fig_loss': fig_loss, 'ax_loss': ax_loss, 'fig_accu': fig_accu, 'ax_accu': ax_accu, 'fig_accu_out': fig_accu_out, 'ax_out_freq': ax_out_freq, 'ax_accu_out': ax_accu_out, 'fig_out_residual': fig_out_residual, 'ax_out_residual': ax_out_residual, 'fig_histograms': fig_histograms, 'ax_weights': ax_weights, 'ax_biases': ax_biases}
 
 # Do the graphing
-def graphing(graphs, graph_data, total_num, epochs, accu_out_resolution=100):
+def graphing(graphs, graph_data, total_num, epochs, accu_out_resolution=100, out_residual_resolution=100):
     """
     Does the graphing.
 
@@ -278,7 +278,7 @@ def graphing(graphs, graph_data, total_num, epochs, accu_out_resolution=100):
     graphs['ax_loss'].set_ylabel('Loss (MSE)')
     graphs['ax_loss'].set_yscale('log')
 
-    h = graphs['ax_out_residual'].hist2d(test_outputs, graph_data['out_residual_vals'])
+    h = graphs['ax_out_residual'].hist2d(test_outputs, graph_data['out_residual_vals'], [out_residual_resolution, out_residual_resolution])
     graphs['ax_out_residual'].set_xlabel('True Outputs')
     graphs['ax_out_residual'].set_ylabel('Residual (actual - prediction)')
     graphs['fig_out_residual'].colorbar(h[3], ax=graphs['ax_out_residual'], label='Frequency')
@@ -322,7 +322,7 @@ def analyze(param_list, trials, inputs, outputs, test_inputs, test_outputs, mini
     for i in param_list:
         for j in range(trials):
             model = create_model(inputs, outputs, i[0], i[1])
-            graph_data = train_network(model, i[0], i[1], inputs, outputs, test_inputs, test_outputs, miniBatchSize, i[2], False)
+            graph_data = train_network(model, i[0], i[1], inputs, outputs, test_inputs, test_outputs, miniBatchSize, i[2], i[3], i[4], False)
             analysis_data['nodes'] = np.append(analysis_data['nodes'], np.full(i[2], i[0]))
             analysis_data['layers'] = np.append(analysis_data['layers'], np.full(i[2], i[1]))
             analysis_data['epochs'] = np.append(analysis_data['epochs'], graph_data['accu_epochs'])
@@ -361,6 +361,7 @@ def analysis_graphing(analysis_graphs, analysis_data, param_list, trials):
         for j in range(trials - 1):
             analysis_graphs['ax_analysis'].plot(analysis_data['time'][counter: counter+i[2]], analysis_data['accuracy'][counter: counter+i[2]], color=first_line[0].get_color())
             counter += i[2]
-    analysis_graphs['ax_analysis'].legend()
+    analysis_graphs['ax_analysis'].legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    analysis_graphs['fig_analysis'].tight_layout()
 
     return analysis_graphs
