@@ -1,4 +1,5 @@
 # %matplotlib notebook
+from sys import path_importer_cache
 import torch
 import numpy as np
 import numpy.ma as ma
@@ -98,11 +99,11 @@ def create_model(inputs, outputs, hidden_nodes=100, layer_num = 0):
     return model.cuda()
 
 # Train network
-def train_network(model, hidden_nodes, hidden_layers, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, miniBatchSize = 100., num_epochs = 500, learning_rate = 1e-4, weight_decay = 0, show_progress = True):
+def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, miniBatchSize = 100., num_epochs = 500, learning_rate = 1e-4, lr_red_factor = 0.2, lr_red_patience = 40 , lr_red_threshold = 1e-3, weight_decay = 0, show_progress = True):
     """
     Trains a network of a given architecture.
 
-    Inputs: model (Pytorch sequential container), hidden_nodes (the number of nodes in each hidden layer (the same for all layers); integer), hidden_layers (integer), std_inputs (standardized training input data; Pytorch tensor), std_outputs (standardized training output data; Pytorch tensor), std_test_inputs (standardized testing input data; Pytorch tensor), std_test_outputs (standardized testing output data; Pytorch tensor), output_stats (mean, standard deviation) (tuple), analysis_data (dictionary), miniBatchSize (integer), num_epochs (integer), learning_rate (float), weight_decay (float), show_progress (boolean)
+    Inputs: model (Pytorch sequential container), hidden_nodes (the number of nodes in each hidden layer (the same for all layers); integer), hidden_layers (integer), std_inputs (standardized training input data; Pytorch tensor), std_outputs (standardized training output data; Pytorch tensor), std_test_inputs (standardized testing input data; Pytorch tensor), std_test_outputs (standardized testing output data; Pytorch tensor), output_stats (mean, standard deviation) (tuple), analysis_data (dictionary), miniBatchSize (integer), num_epochs (integer), learning_rate (float), lr_red_factor (float), lr_red_patience (int), lr_red_threshold (float), weight_decay (float), show_progress (boolean)
 
     Outputs: graph_data (dictionary)
     """
@@ -123,6 +124,7 @@ def train_network(model, hidden_nodes, hidden_layers, std_inputs, std_outputs, s
     # Set up the training functions
     lossFunc = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(),lr=learning_rate, weight_decay = weight_decay)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=lr_red_factor, patience=lr_red_patience, threshold=lr_red_threshold)
 
     # Initialize graph data
     graph_data = new_graph_data(total_num, num_epochs)
@@ -169,6 +171,7 @@ def train_network(model, hidden_nodes, hidden_layers, std_inputs, std_outputs, s
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+        scheduler.step(test_std_loss_temp)
     
     # Data for the residual plots
     model.eval()
@@ -345,7 +348,7 @@ def analyze(param_list, trials, inputs, outputs, test_inputs, test_outputs, mini
     for i in param_list:
         for j in range(trials):
             model = create_model(inputs, outputs, i[0], i[1])
-            graph_data = train_network(model, i[0], i[1], inputs, outputs, test_inputs, test_outputs, miniBatchSize, i[2], i[3], i[4], False)
+            graph_data = train_network(model, inputs, outputs, test_inputs, test_outputs, miniBatchSize, i[2], i[3], i[4], i[5], i[7], False)
             analysis_data['nodes'] = np.append(analysis_data['nodes'], np.full(i[2], i[0]))
             analysis_data['layers'] = np.append(analysis_data['layers'], np.full(i[2], i[1]))
             analysis_data['epochs'] = np.append(analysis_data['epochs'], graph_data['accu_epochs'])
