@@ -134,14 +134,12 @@ def train_network(model, hidden_nodes, hidden_layers, std_inputs, std_outputs, s
             model.eval()
             # Data for the accuracy plots
             test_final_prediction_temp = affine_untransform(model(std_test_inputs), output_stats)
-            score_temp = v_accu_test(test_final_prediction_temp.cpu().detach().numpy(), test_outputs.cpu().detach().numpy())
+            score_temp = v_accu_test(test_final_prediction_temp.cpu().detach().numpy().flatten(), test_outputs.cpu().detach().numpy().flatten())
             graph_data['accu_vals'][epoch] = np.sum(score_temp) / total_num
             graph_data['accu_epochs'][epoch] = epoch
-            for i in range(total_num):
-                if (score_temp[i] == 1):
-                    graph_data['accu_out_colors'][i + epoch*total_num] = 'b'
-                graph_data['accu_out_epochs'][i + epoch*total_num] = epoch
-                graph_data['accu_out_vals'][i + epoch*total_num] = test_outputs[i]
+            graph_data['accu_out_scores'][epoch*total_num: (epoch+1)*total_num] = score_temp
+            graph_data['accu_out_epochs'][epoch*total_num: (epoch+1)*total_num] = epoch
+            graph_data['accu_out_vals'][epoch*total_num: (epoch+1)*total_num] = test_outputs.cpu().detach().numpy().flatten()
 
             # Data for the other plots
             train_std_prediction_temp = model(std_inputs)
@@ -186,7 +184,7 @@ def train_network(model, hidden_nodes, hidden_layers, std_inputs, std_outputs, s
         elif 'bias' in key:
             graph_data['biases'] = np.append(graph_data['biases'], model_param[key].cpu().detach().numpy().flatten())
     # Other data
-    graph_data['test_outputs'] = test_outputs
+    graph_data['test_outputs'] = test_outputs.cpu().detach().numpy().flatten()
 
     print ('Training done!')
     #print ('--- %s seconds ---' % (time.perf_counter() - start_time))
@@ -212,8 +210,8 @@ def new_graph_data(total_num, epochs):
     graph_data['time_vals'] = np.zeros(epochs)
     graph_data['time_epochs'] = np.zeros(epochs)
     graph_data['accu_out_vals'] = np.zeros(epochs * total_num)
-    graph_data['accu_out_colors'] = np.full(epochs * total_num, 'r')
-    graph_data['accu_out_epochs'] = np.zeros(epochs * total_num)
+    graph_data['accu_out_scores'] = np.zeros(epochs * total_num)
+    graph_data['accu_out_epochs'] = np.zeros(epochs * total_num, dtype=np.int)
     graph_data['out_residual_vals'] = np.array([])
     graph_data['weights'] = np.array([])
     graph_data['biases'] = np.array([])
@@ -264,7 +262,7 @@ def graphing(graphs, graph_data, total_num, epochs, accu_out_resolution=100, out
 
     Outputs: graphs (dictionary)
     """
-    test_outputs = graph_data['test_outputs'].cpu().detach().numpy().flatten()
+    test_outputs = graph_data['test_outputs']
 
     graphs['ax_accu'].plot(graph_data['accu_epochs'], graph_data['accu_vals'], 'b-')
     graphs['ax_accu'].set_xlabel('Epochs')
@@ -279,25 +277,16 @@ def graphing(graphs, graph_data, total_num, epochs, accu_out_resolution=100, out
     grid_size = (max_graph - min_graph) / accu_out_resolution
     grid_accu_tally = np.zeros((accu_out_resolution, epochs, 2))
     grid_accu = ma.array(np.zeros((accu_out_resolution, epochs))) # Masked array
-    for i in range(epochs):
-        for j in range(total_num):
-            grid_num = int((graph_data['accu_out_vals'][i*total_num + j] - min_graph) / grid_size)
-            if graph_data['accu_out_colors'][i*total_num + j] == 'b':
-                grid_accu_tally[grid_num][i][0] += 1
-            grid_accu_tally[grid_num][i][1] += 1
-    for i in range(accu_out_resolution):
-        for j in range(epochs):
-            if grid_accu_tally[i][j][1] == 0:
-                grid_accu[i, j] = ma.masked # Possible matplotlib bug, [i][j] doesn't work but [i,j] does.
-            else:
-                grid_accu[i][j] = grid_accu_tally[i][j][0] / grid_accu_tally[i][j][1]
+
+    grid_num = np.floor((graph_data['accu_out_vals'] - min_graph) / grid_size).astype(np.int)
+    np.add.at(grid_accu_tally, (grid_num, graph_data['accu_out_epochs'], 0), graph_data['accu_out_scores'])
+    np.add.at(grid_accu_tally, (grid_num, graph_data['accu_out_epochs'], 1), 1)
+    grid_accu = np.where(grid_accu_tally[:,:,1] == 0, ma.masked, grid_accu_tally[:,:,0] / grid_accu_tally[:,:,1])
+
     im = graphs['ax_accu_out'].pcolormesh(np.arange(-0.5, epochs, 1), grid, grid_accu)
     graphs['ax_accu_out'].set_xlabel('Epochs')
     graphs['ax_accu_out'].set_ylabel('Outputs')
     graphs['fig_accu_out'].colorbar(im, ax=graphs['ax_accu_out'], label='Accuracy')
-    # graphs['ax_accu_out'].scatter(graph_data['accu_out_epochs'], graph_data['accu_out_vals'], c=graph_data['accu_out_colors'], s=1)
-    # graphs['ax_accu_out'].set_xlabel('Epochs')
-    # graphs['ax_accu_out'].set_ylabel('Outputs (Red=inaccurate, Blue=accurate)')
 
     graphs['ax_out_freq'].hist(test_outputs, bins=grid, orientation='horizontal', color='b')
     graphs['ax_out_freq'].set_xlabel('Frequency')
