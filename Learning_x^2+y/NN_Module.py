@@ -309,7 +309,7 @@ def graphing(graphs, graph_data, total_num, epochs, accu_out_resolution=100, out
     test_loss_line, = graphs['ax_loss'].plot(graph_data['test_loss_epochs'], graph_data['test_loss_vals'], 'g-', linewidth=1)
     graphs['ax_loss'].legend([train_loss_line, test_loss_line], ['Train', 'Test'])
     graphs['ax_loss'].set_xlabel('Epochs')
-    graphs['ax_loss'].set_ylabel('Loss (MSE)')
+    graphs['ax_loss'].set_ylabel('Loss (After Standardization; MSE)')
     graphs['ax_loss'].set_yscale('log')
 
     h = graphs['ax_out_residual'].hist2d(test_outputs, graph_data['out_residual_vals'], [out_residual_resolution, out_residual_resolution])
