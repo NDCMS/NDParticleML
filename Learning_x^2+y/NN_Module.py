@@ -174,7 +174,7 @@ def train_network(model, hidden_nodes, hidden_layers, std_inputs, std_outputs, s
     model.eval()
     test_final_prediction_temp = affine_untransform(model(std_test_inputs), output_stats)
     residual = test_outputs - test_final_prediction_temp
-    graph_data['out_residual_vals'] = np.append(graph_data['out_residual_vals'], residual.cpu().detach().numpy())
+    graph_data['out_residual_vals'] = residual.cpu().detach().numpy().flatten()
     
     # Data for the weights and biases histograms
     model_param  = model.state_dict()
@@ -276,12 +276,12 @@ def graphing(graphs, graph_data, total_num, epochs, accu_out_resolution=100, out
     grid = np.linspace(min_graph, max_graph, accu_out_resolution+1)
     grid_size = (max_graph - min_graph) / accu_out_resolution
     grid_accu_tally = np.zeros((accu_out_resolution, epochs, 2))
-    grid_accu = ma.array(np.zeros((accu_out_resolution, epochs))) # Masked array
 
     grid_num = np.floor((graph_data['accu_out_vals'] - min_graph) / grid_size).astype(np.int)
     np.add.at(grid_accu_tally, (grid_num, graph_data['accu_out_epochs'], 0), graph_data['accu_out_scores'])
     np.add.at(grid_accu_tally, (grid_num, graph_data['accu_out_epochs'], 1), 1)
-    grid_accu = np.where(grid_accu_tally[:,:,1] == 0, ma.masked, grid_accu_tally[:,:,0] / grid_accu_tally[:,:,1])
+    grid_accu_tally_nonzero = np.where(grid_accu_tally[:,:,1:2] == 0, 1, grid_accu_tally)
+    grid_accu = ma.where(grid_accu_tally[:,:,1] == 0, ma.masked, grid_accu_tally[:,:,0] / grid_accu_tally_nonzero[:,:,1]) # Masked array
 
     im = graphs['ax_accu_out'].pcolormesh(np.arange(-0.5, epochs, 1), grid, grid_accu)
     graphs['ax_accu_out'].set_xlabel('Epochs')
