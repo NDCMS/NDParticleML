@@ -31,6 +31,39 @@ def rel_err(pred, act):
     """
     return abs(abs_err(pred, act)/act)
 
+def affine_transform(tensor, stats):
+    """
+    Subtracts mean and divides by standard deviation.
+
+    Inputs: tensor (Pytorch tensor), stats (mean, standard deviation) (tuple)
+
+    Outputs: tensor (Pytorch tensor)
+    """
+    return (tensor - stats[0]) / stats[1]
+
+def affine_untransform(tensor, stats):
+    """
+    Inverse function of affine_transform. Multiplies by stddev and adds mean.
+
+    Inputs: tensor (Pytorch tensor), stats (mean, standard deviation) (tuple)
+
+    Outputs: tensor (Pytorch tensor)
+    """
+    return tensor * stats[1] + stats[0]
+
+def find_stats(tensor):
+    """
+    Finds the mean and standard deviation per coordinate.
+
+    Inputs: tensor (Pytorch tensor)
+
+    Outputs: (mean, stddev) (tuple)
+    """
+    mean = torch.mean(tensor, 0)
+    stddev = torch.std(tensor, 0)
+
+    return (mean, stddev)
+
 # Check if a prediction is within 0.01 absolute accuracy or 1% relative accuracy
 def accu_test(prediction, actual):
     """
@@ -65,26 +98,27 @@ def create_model(inputs, outputs, hidden_nodes=100, layer_num = 0):
     return model.cuda()
 
 # Train network
-def train_network(model, hidden_nodes, hidden_layers, inputs, outputs, test_inputs, test_outputs, miniBatchSize = 100., num_epochs = 500, learning_rate = 1e-4, weight_decay = 1e-5, show_progress = True):
+def train_network(model, hidden_nodes, hidden_layers, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, miniBatchSize = 100., num_epochs = 500, learning_rate = 1e-4, weight_decay = 0, show_progress = True):
     """
     Trains a network of a given architecture.
 
-    Inputs: model (Pytorch sequential container), hidden_nodes (the number of nodes in each hidden layer (the same for all layers); integer), hidden_layers (integer), inputs (training input data; Pytorch tensor), outputs (training output data; Pytorch tensor), test_inputs (testing input data; Pytorch tensor), test_outputs (testing output data; Pytorch tensor), analysis_data (dictionary), miniBatchSize (integer), num_epochs (integer), show_progress (boolean)
+    Inputs: model (Pytorch sequential container), hidden_nodes (the number of nodes in each hidden layer (the same for all layers); integer), hidden_layers (integer), std_inputs (standardized training input data; Pytorch tensor), std_outputs (standardized training output data; Pytorch tensor), std_test_inputs (standardized testing input data; Pytorch tensor), std_test_outputs (standardized testing output data; Pytorch tensor), output_stats (mean, standard deviation) (tuple), analysis_data (dictionary), miniBatchSize (integer), num_epochs (integer), learning_rate (float), weight_decay (float), show_progress (boolean)
 
     Outputs: graph_data (dictionary)
     """
     # Useful information
-    total_num = torch.numel(test_outputs)
-    N = inputs.shape[1]
+    total_num = torch.numel(std_test_outputs)
+    N = std_inputs.shape[1]
+    test_outputs = affine_untransform(std_test_outputs, output_stats)
 
     # Get ready to train
     start_time = time.perf_counter()
     model.train()
 
     # Break the list up into smaller batches for more efficient training
-    numMiniBatch = int(math.floor(inputs.shape[0]/miniBatchSize))
-    inputMiniBatches = inputs.chunk(numMiniBatch)
-    outputMiniBatches = outputs.chunk(numMiniBatch)
+    numMiniBatch = int(math.floor(std_inputs.shape[0]/miniBatchSize))
+    inputMiniBatches = std_inputs.chunk(numMiniBatch)
+    outputMiniBatches = std_outputs.chunk(numMiniBatch)
 
     # Set up the training functions
     lossFunc = torch.nn.MSELoss()
@@ -99,8 +133,8 @@ def train_network(model, hidden_nodes, hidden_layers, inputs, outputs, test_inpu
         with torch.no_grad():
             model.eval()
             # Data for the accuracy plots
-            prediction_temp = model(test_inputs)
-            score_temp = v_accu_test(prediction_temp.cpu().detach().numpy(), test_outputs.cpu().detach().numpy())
+            test_final_prediction_temp = affine_untransform(model(std_test_inputs), output_stats)
+            score_temp = v_accu_test(test_final_prediction_temp.cpu().detach().numpy(), test_outputs.cpu().detach().numpy())
             graph_data['accu_vals'][epoch] = np.sum(score_temp) / total_num
             graph_data['accu_epochs'][epoch] = epoch
             for i in range(total_num):
@@ -110,13 +144,13 @@ def train_network(model, hidden_nodes, hidden_layers, inputs, outputs, test_inpu
                 graph_data['accu_out_vals'][i + epoch*total_num] = test_outputs[i]
 
             # Data for the other plots
-            train_total_prediction_temp = model(inputs)
-            train_total_loss_temp = lossFunc(train_total_prediction_temp, outputs).item()
-            test_total_prediction_temp = model(test_inputs)
-            test_total_loss_temp = lossFunc(test_total_prediction_temp, test_outputs).item()
-            graph_data['train_loss_vals'][epoch] = train_total_loss_temp
+            train_std_prediction_temp = model(std_inputs)
+            train_std_loss_temp = lossFunc(train_std_prediction_temp, std_outputs).item()
+            test_std_prediction_temp = model(std_test_inputs)
+            test_std_loss_temp = lossFunc(test_std_prediction_temp, std_test_outputs).item()
+            graph_data['train_loss_vals'][epoch] = train_std_loss_temp
             graph_data['train_loss_epochs'][epoch] = epoch
-            graph_data['test_loss_vals'][epoch] = test_total_loss_temp
+            graph_data['test_loss_vals'][epoch] = test_std_loss_temp
             graph_data['test_loss_epochs'][epoch] = epoch
             graph_data['time_vals'][epoch] = time.perf_counter() - start_time
             graph_data['time_epochs'][epoch] = epoch
@@ -140,8 +174,8 @@ def train_network(model, hidden_nodes, hidden_layers, inputs, outputs, test_inpu
     
     # Data for the residual plots
     model.eval()
-    prediction_temp = model(test_inputs)
-    residual = test_outputs - prediction_temp
+    test_final_prediction_temp = affine_untransform(model(std_test_inputs), output_stats)
+    residual = test_outputs - test_final_prediction_temp
     graph_data['out_residual_vals'] = np.append(graph_data['out_residual_vals'], residual.cpu().detach().numpy())
     
     # Data for the weights and biases histograms
@@ -348,7 +382,7 @@ def analysis_graphing(analysis_graphs, analysis_data, param_list, trials):
     """
     Does the analysis graphing.
 
-    Inputs: analysis_graphs (dictionary), analysis_data (dictionary)
+    Inputs: analysis_graphs (dictionary), analysis_data (dictionary), param_list (list), trials (integer)
 
     Outputs: analysis_graphs (dictionary)
     """
