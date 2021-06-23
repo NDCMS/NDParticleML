@@ -9,6 +9,7 @@ import math
 import time
 import pandas as pd
 from pandas import read_csv
+from matplotlib.backends.backend_pdf import PdfPages
 
 # Functions
 
@@ -30,6 +31,7 @@ def rel_err(pred, act):
 
     Outputs: the relative error (float)
     """
+    if act == 0: return 9e+10
     return abs(abs_err(pred, act)/act)
 
 def affine_transform(tensor, stats):
@@ -335,12 +337,29 @@ def show_graphs(graphs):
     graphs['fig_out_residual']
     graphs['fig_histograms']
 
+# Save all graphs in one pdf file
+def save_graphs(graphs, name):
+    """
+    Saves the graphs to one pdf.
+
+    Inputs: graphs (dictionary), name (string)
+
+    Outputs: None
+    """
+    pp = PdfPages(name)
+    pp.savefig(graphs['fig_loss'])
+    pp.savefig(graphs['fig_accu'])
+    pp.savefig(graphs['fig_accu_out'])
+    pp.savefig(graphs['fig_out_residual'])
+    pp.savefig(graphs['fig_histograms'])
+    pp.close()
+
 # Analyze NN
-def analyze(param_list, trials, inputs, outputs, test_inputs, test_outputs, miniBatchSize = 100.):
+def analyze(param_list, trials, inputs, outputs, test_inputs, test_outputs, output_stats, miniBatchSize = 100.):
     """
     Tests networks with given hyperparameters.
 
-    Inputs: param_list (list), trials (integer), inputs (training input data; Pytorch tensor), outputs (training output data; Pytorch tensor), test_inputs (testing input data; Pytorch tensor), test_outputs (testing output data; Pytorch tensor), analysis_data (dictionary), miniBatchSize (integer)
+    Inputs: param_list (list), trials (integer), inputs (training input data; Pytorch tensor), outputs (training output data; Pytorch tensor), test_inputs (testing input data; Pytorch tensor), test_outputs (testing output data; Pytorch tensor), output_stats (mean, standard deviation) (tuple), analysis_data (dictionary), miniBatchSize (integer)
 
     Outputs: analysis_data (dictionary)
     """
@@ -348,7 +367,7 @@ def analyze(param_list, trials, inputs, outputs, test_inputs, test_outputs, mini
     for i in param_list:
         for j in range(trials):
             model = create_model(inputs, outputs, i[0], i[1])
-            graph_data = train_network(model, inputs, outputs, test_inputs, test_outputs, miniBatchSize, i[2], i[3], i[4], i[5], i[7], False)
+            graph_data = train_network(model, inputs, outputs, test_inputs, test_outputs, output_stats, miniBatchSize, i[2], i[3], i[4], i[5], i[6], i[7], False)
             analysis_data['nodes'] = np.append(analysis_data['nodes'], np.full(i[2], i[0]))
             analysis_data['layers'] = np.append(analysis_data['layers'], np.full(i[2], i[1]))
             analysis_data['epochs'] = np.append(analysis_data['epochs'], graph_data['accu_epochs'])
