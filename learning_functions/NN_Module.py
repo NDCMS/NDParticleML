@@ -101,7 +101,7 @@ def create_model(inputs, outputs, hidden_nodes=100, layer_num = 0):
     return model.cuda()
 
 # Train network
-def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, miniBatchSize = 100., num_epochs = 500, learning_rate = 1e-4, lr_red_factor = 0.2, lr_red_patience = 40 , lr_red_threshold = 1e-3, weight_decay = 0, show_progress = True):
+def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, miniBatchSize = 100., num_epochs = 500, learning_rate = 1e-4, lr_red_factor = 0.2, lr_red_patience = 40 , lr_red_threshold = 1e-3, weight_decay = 0, accu_out_resolution = 100, show_progress = True):
     """
     Trains a network of a given architecture.
 
@@ -113,7 +113,19 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
     total_num = torch.numel(std_test_outputs)
     N = std_inputs.shape[1]
     test_outputs = affine_untransform(std_test_outputs, output_stats)
+    test_outputs_np = test_outputs.cpu().detach().numpy().flatten()
+    test_size = test_outputs_np.size
 
+    # Useful info for accu_out graph
+    # Calculate accuracy for each region
+    max_out = test_outputs_np.max()
+    min_out = test_outputs_np.min()
+    max_graph = max_out + (max_out - min_out) / 100
+    min_graph = min_out - (max_out - min_out) / 100
+    grid_size = (max_graph - min_graph) / accu_out_resolution
+    grid_accu_tally = np.zeros((accu_out_resolution, num_epochs, 2))
+    grid_num = np.floor((test_outputs_np - min_graph) / grid_size).astype(np.int)
+    
     # Get ready to train
     start_time = time.perf_counter()
     model.train()
@@ -136,18 +148,19 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
         # Everything that needs to be done every epoch
         with torch.no_grad():
             model.eval()
-            # Data for the accuracy plots
+            # Data for the accuracy curve
             test_final_prediction_temp = affine_untransform(model(std_test_inputs), output_stats)
-            score_temp = v_accu_test(test_final_prediction_temp.cpu().detach().numpy().flatten(), test_outputs.cpu().detach().numpy().flatten())
+            score_temp = v_accu_test(test_final_prediction_temp.cpu().detach().numpy().flatten(), test_outputs_np)
             graph_data['accu_vals'][epoch] = np.sum(score_temp) / total_num
             graph_data['accu_epochs'][epoch] = epoch
-            graph_data['accu_out_scores'][epoch*total_num: (epoch+1)*total_num] = score_temp
-            graph_data['accu_out_epochs'][epoch*total_num: (epoch+1)*total_num] = epoch
-            graph_data['accu_out_vals'][epoch*total_num: (epoch+1)*total_num] = test_outputs.cpu().detach().numpy().flatten()
+
+            # Data for accu_out
+            np.add.at(grid_accu_tally, (grid_num, epoch, 0), score_temp)
+            np.add.at(grid_accu_tally, (grid_num, epoch, 1), 1)
 
             # Data for the other plots
-            train_std_prediction_temp = model(std_inputs)
-            train_std_loss_temp = lossFunc(train_std_prediction_temp, std_outputs).item()
+            train_std_prediction_temp = model(std_inputs[:test_size]) # We only find the loss on the first slice of data, with the size equal to that of the testing set, to save memory
+            train_std_loss_temp = lossFunc(train_std_prediction_temp, std_outputs[:test_size]).item()
             test_std_prediction_temp = model(std_test_inputs)
             test_std_loss_temp = lossFunc(test_std_prediction_temp, std_test_outputs).item()
             graph_data['train_loss_vals'][epoch] = train_std_loss_temp
@@ -188,8 +201,13 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
             graph_data['weights'] = np.append(graph_data['weights'], model_param[key].cpu().detach().numpy().flatten())
         elif 'bias' in key:
             graph_data['biases'] = np.append(graph_data['biases'], model_param[key].cpu().detach().numpy().flatten())
+    # Data for accu_out
+    graph_data['accu_out_grid'] = np.linspace(min_graph, max_graph, accu_out_resolution+1)
+    grid_accu_tally_nonzero = np.where(grid_accu_tally[:,:,1:2] == 0, 1, grid_accu_tally)
+    graph_data['accu_out_grid_accu'] = ma.where(grid_accu_tally[:,:,1] == 0, ma.masked, grid_accu_tally[:,:,0] / grid_accu_tally_nonzero[:,:,1]) # Masked array
+
     # Other data
-    graph_data['test_outputs'] = test_outputs.cpu().detach().numpy().flatten()
+    graph_data['test_outputs'] = test_outputs_np
 
     print ('Training done!')
     #print ('--- %s seconds ---' % (time.perf_counter() - start_time))
@@ -214,9 +232,8 @@ def new_graph_data(total_num, epochs):
     graph_data['accu_epochs'] = np.zeros(epochs)
     graph_data['time_vals'] = np.zeros(epochs)
     graph_data['time_epochs'] = np.zeros(epochs)
-    graph_data['accu_out_vals'] = np.zeros(epochs * total_num)
-    graph_data['accu_out_scores'] = np.zeros(epochs * total_num)
-    graph_data['accu_out_epochs'] = np.zeros(epochs * total_num, dtype=np.int)
+    graph_data['accu_out_grid'] = np.array([])
+    graph_data['accu_out_grid_accu'] = np.array([])
     graph_data['out_residual_vals'] = np.array([])
     graph_data['weights'] = np.array([])
     graph_data['biases'] = np.array([])
@@ -273,27 +290,12 @@ def graphing(graphs, graph_data, total_num, epochs, accu_out_resolution=100, out
     graphs['ax_accu'].set_xlabel('Epochs')
     graphs['ax_accu'].set_ylabel('Accuracy')
 
-    # Calculate accuracy for each region
-    max_out = test_outputs.max()
-    min_out = test_outputs.min()
-    max_graph = max_out + (max_out - min_out) / 100
-    min_graph = min_out - (max_out - min_out) / 100
-    grid = np.linspace(min_graph, max_graph, accu_out_resolution+1)
-    grid_size = (max_graph - min_graph) / accu_out_resolution
-    grid_accu_tally = np.zeros((accu_out_resolution, epochs, 2))
-
-    grid_num = np.floor((graph_data['accu_out_vals'] - min_graph) / grid_size).astype(np.int)
-    np.add.at(grid_accu_tally, (grid_num, graph_data['accu_out_epochs'], 0), graph_data['accu_out_scores'])
-    np.add.at(grid_accu_tally, (grid_num, graph_data['accu_out_epochs'], 1), 1)
-    grid_accu_tally_nonzero = np.where(grid_accu_tally[:,:,1:2] == 0, 1, grid_accu_tally)
-    grid_accu = ma.where(grid_accu_tally[:,:,1] == 0, ma.masked, grid_accu_tally[:,:,0] / grid_accu_tally_nonzero[:,:,1]) # Masked array
-
-    im = graphs['ax_accu_out'].pcolormesh(np.arange(-0.5, epochs, 1), grid, grid_accu)
+    im = graphs['ax_accu_out'].pcolormesh(np.arange(-0.5, epochs, 1), graph_data['accu_out_grid'], graph_data['accu_out_grid_accu'])
     graphs['ax_accu_out'].set_xlabel('Epochs')
     graphs['ax_accu_out'].set_ylabel('Outputs')
     graphs['fig_accu_out'].colorbar(im, ax=graphs['ax_accu_out'], label='Accuracy')
 
-    graphs['ax_out_freq'].hist(test_outputs, bins=grid, orientation='horizontal', color='b')
+    graphs['ax_out_freq'].hist(test_outputs, bins=graph_data['accu_out_grid'], orientation='horizontal', color='b')
     graphs['ax_out_freq'].set_xlabel('Frequency')
     graphs['ax_out_freq'].set_ylabel('Outputs')
     graphs['ax_out_freq'].margins(0)
@@ -367,7 +369,7 @@ def analyze(param_list, trials, inputs, outputs, test_inputs, test_outputs, outp
     for i in param_list:
         for j in range(trials):
             model = create_model(inputs, outputs, i[0], i[1])
-            graph_data = train_network(model, inputs, outputs, test_inputs, test_outputs, output_stats, miniBatchSize, i[2], i[3], i[4], i[5], i[6], i[7], False)
+            graph_data = train_network(model, inputs, outputs, test_inputs, test_outputs, output_stats, miniBatchSize, i[2], i[3], i[4], i[5], i[6], i[7], 100, False)
             analysis_data['nodes'] = np.append(analysis_data['nodes'], np.full(i[2], i[0]))
             analysis_data['layers'] = np.append(analysis_data['layers'], np.full(i[2], i[1]))
             analysis_data['epochs'] = np.append(analysis_data['epochs'], graph_data['accu_epochs'])
