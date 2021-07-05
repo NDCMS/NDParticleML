@@ -267,6 +267,7 @@ def new_graphs():
 
     Outputs: graphs (dictionary)
     """
+    fig_time, ax_time = plt.subplots()
     fig_param, ax_param = plt.subplots()
     fig_loss, ax_loss = plt.subplots()
     fig_accu, ax_accu = plt.subplots()
@@ -274,7 +275,7 @@ def new_graphs():
     fig_out_residual, ax_out_residual = plt.subplots()
     fig_histograms, (ax_weights, ax_biases) = plt.subplots(nrows=1, ncols=2)
 
-    return {'fig_param': fig_param, 'ax_param': ax_param, 'fig_loss': fig_loss, 'ax_loss': ax_loss, 'fig_accu': fig_accu, 'ax_accu': ax_accu, 'fig_accu_out': fig_accu_out, 'ax_out_freq': ax_out_freq, 'ax_accu_out': ax_accu_out, 'fig_out_residual': fig_out_residual, 'ax_out_residual': ax_out_residual, 'fig_histograms': fig_histograms, 'ax_weights': ax_weights, 'ax_biases': ax_biases}
+    return {'fig_time': fig_time, 'ax_time': ax_time, 'fig_param': fig_param, 'ax_param': ax_param, 'fig_loss': fig_loss, 'ax_loss': ax_loss, 'fig_accu': fig_accu, 'ax_accu': ax_accu, 'fig_accu_out': fig_accu_out, 'ax_out_freq': ax_out_freq, 'ax_accu_out': ax_accu_out, 'fig_out_residual': fig_out_residual, 'ax_out_residual': ax_out_residual, 'fig_histograms': fig_histograms, 'ax_weights': ax_weights, 'ax_biases': ax_biases}
 
 # Do the graphing
 def graphing(graphs, graph_data, parameters):
@@ -302,6 +303,11 @@ def graphing(graphs, graph_data, parameters):
     props = {'boxstyle': 'round', 'facecolor': 'wheat', 'alpha': 0.5}
     graphs['ax_param'].text(0.05, 0.95, param_str, transform=graphs['ax_param'].transAxes, fontsize=14, verticalalignment='top', bbox=props)
     graphs['fig_param'].tight_layout()
+
+    graphs['ax_time'].plot(graph_data['time_vals'], graph_data['time_epochs'], 'b-')
+    graphs['ax_time'].set_xlabel('Epochs')
+    graphs['ax_time'].set_ylabel('Time (s)')
+    graphs['fig_time'].tight_layout()
 
     graphs['ax_accu'].plot(graph_data['accu_epochs'], graph_data['accu_vals'], 'b-')
     graphs['ax_accu'].set_xlabel('Epochs')
@@ -353,6 +359,7 @@ def show_graphs(graphs):
 
     Outputs: None
     """
+    graphs['fig_time']
     graphs['fig_param']
     graphs['fig_loss']
     graphs['fig_accu']
@@ -370,6 +377,7 @@ def save_graphs(graphs, name):
     Outputs: None
     """
     pp = PdfPages(name)
+    pp.savefig(graphs['fig_time'])
     pp.savefig(graphs['fig_param'])
     pp.savefig(graphs['fig_loss'])
     pp.savefig(graphs['fig_accu'])
