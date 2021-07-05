@@ -294,11 +294,11 @@ def graphing(graphs, graph_data, parameters):
         r'Layers: %d' % parameters['hidden_layers'],
         r'Minibatch Size: %d' % parameters['batch_size'],
         r'Epochs: %d' % parameters['n_epochs'],
-        r'Initial Learning Rate: %d' % parameters['learning_rate'],
-        r'Learning Rate Reduction Factor: %d' % parameters['lr_red_factor'],
+        r'Initial Learning Rate: %f' % parameters['learning_rate'],
+        r'Learning Rate Reduction Factor: %f' % parameters['lr_red_factor'],
         r'Learning Rate Reduction Patience: %d' % parameters['lr_red_patience'],
-        r'Learning Rate Reduction Threshold: %d' % parameters['lr_red_threshold'],
-        r'Weight Decay: %d' % parameters['weight_decay']))
+        r'Learning Rate Reduction Threshold: %f' % parameters['lr_red_threshold'],
+        r'Weight Decay: %f' % parameters['weight_decay']))
     props = {'boxstyle': 'round', 'facecolor': 'wheat', 'alpha': 0.5}
     graphs['ax_param'].text(0.05, 0.95, param_str, transform=graphs['ax_param'].transAxes, fontsize=14, verticalalignment='top', bbox=props)
     graphs['fig_param'].tight_layout()
