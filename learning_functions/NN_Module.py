@@ -130,9 +130,9 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
     model.train()
 
     # Break the list up into smaller batches for more efficient training
-    numMiniBatch = int(math.floor(std_inputs.shape[0]/parameters['batch_size']))
-    inputMiniBatches = std_inputs.chunk(numMiniBatch)
-    outputMiniBatches = std_outputs.chunk(numMiniBatch)
+    inputMiniBatches = torch.split(std_inputs, parameters['batch_size'])
+    outputMiniBatches = torch.split(std_outputs, parameters['batch_size'])
+    numMiniBatch = len(inputMiniBatches)
 
     # Set up the training functions
     lossFunc = torch.nn.MSELoss()
