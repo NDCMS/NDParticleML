@@ -120,3 +120,6 @@ nnm.graphing(graphs, graph_data, parameters)
 
 # Save all graphs
 nnm.save_graphs(graphs, f'./graphs/{args.out_file}.pdf')
+
+# See pytorch version
+# print (torch.__version__)

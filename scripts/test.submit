@@ -1,12 +1,12 @@
 universe = vanilla
 executable = submit.sh
 
-#Log    = ./logs/$(Cluster)_$(Process).log
-#Output = ./logs/$(Cluster)_$(Process).out
-#Error  = ./logs/$(Cluster)_$(Process).err
-Log    = /scratch365/sliu24/logs/$(Cluster).log
-Output = /scratch365/sliu24/logs/$(Cluster)-$(Process).out
-Error  = /scratch365/sliu24/logs/$(Cluster)-$(Process).err
+Log    = ./logs/$(Cluster)_$(Process).log
+Output = ./logs/$(Cluster)_$(Process).out
+Error  = ./logs/$(Cluster)_$(Process).err
+#Log    = /scratch365/sliu24/logs/$(Cluster).log
+#Output = /scratch365/sliu24/logs/$(Cluster)-$(Process).out
+#Error  = /scratch365/sliu24/logs/$(Cluster)-$(Process).err
 
 should_transfer_files = YES
 transfer_input_files = script_nn.py, NN_Module.py, inputs.pt, outputs.pt, test_inputs.pt, test_outputs.pt
@@ -16,7 +16,8 @@ transfer_output_files = graphs
 
 # Enable Singularity feature
 ## Notre Dame Images
-+SingularityImage = "/cvmfs/singularity.opensciencegrid.org/notredamedulac/el7-pytorch-gpu:latest"
+# doesn't give latest Pytorch: +SingularityImage = "/cvmfs/singularity.opensciencegrid.org/notredamedulac/el7-pytorch-gpu:latest"
++SingularityImage = "/afs/crc.nd.edu/x86_64_linux/s/singularity/images/pytorch-1.9.sif"
 
 request_gpus   = 1
 request_memory = 1 Gb
