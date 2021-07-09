@@ -100,11 +100,11 @@ def create_model(inputs, outputs, parameters):
     return model.cuda()
 
 # Train network
-def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, parameters, show_progress = True):
+def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, std_inputs_rep, std_outputs_rep, parameters, show_progress = True):
     """
     Trains a network of a given architecture.
 
-    Inputs: model (Pytorch sequential container), hidden_nodes (the number of nodes in each hidden layer (the same for all layers); integer), hidden_layers (integer), std_inputs (standardized training input data; Pytorch tensor), std_outputs (standardized training output data; Pytorch tensor), std_test_inputs (standardized testing input data; Pytorch tensor), std_test_outputs (standardized testing output data; Pytorch tensor), output_stats (mean, standard deviation) (tuple), parameters (dictionary), show_progress (boolean)
+    Inputs: model (Pytorch sequential container), hidden_nodes (the number of nodes in each hidden layer (the same for all layers); integer), hidden_layers (integer), std_inputs (standardized training input data; Pytorch tensor), std_outputs (standardized training output data; Pytorch tensor), std_test_inputs (standardized testing input data; Pytorch tensor), std_test_outputs (standardized testing output data; Pytorch tensor), output_stats (mean, standard deviation) (tuple), std_inputs_rep (representative inputs; Pytorch tensor), std_outputs_rep (representative outputs; Pytorch tensor), parameters (dictionary), show_progress (boolean)
 
     Outputs: graph_data (dictionary)
     """
@@ -158,8 +158,8 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
             np.add.at(grid_accu_tally, (grid_num, epoch, 1), 1)
 
             # Data for the other plots
-            train_std_prediction_temp = model(std_inputs[:test_size]) # We only find the loss on the first slice of data, with the size equal to that of the testing set, to save memory
-            train_std_loss_temp = lossFunc(train_std_prediction_temp, std_outputs[:test_size]).item()
+            train_std_prediction_temp = model(std_inputs_rep) # We only find the loss on a representative sample of the data, with the size equal to that of the testing set, to save memory
+            train_std_loss_temp = lossFunc(train_std_prediction_temp, std_outputs_rep).item()
             test_std_prediction_temp = model(std_test_inputs)
             test_std_loss_temp = lossFunc(test_std_prediction_temp, std_test_outputs).item()
             graph_data['train_loss_vals'][epoch] = train_std_loss_temp
@@ -303,7 +303,7 @@ def graphing(graphs, graph_data, parameters):
     graphs['ax_param'].text(0.05, 0.95, param_str, transform=graphs['ax_param'].transAxes, fontsize=14, verticalalignment='top', bbox=props)
     graphs['fig_param'].tight_layout()
 
-    graphs['ax_time'].plot(graph_data['time_vals'], graph_data['time_epochs'], 'b-')
+    graphs['ax_time'].plot(graph_data['time_epochs'], graph_data['time_vals'], 'b-')
     graphs['ax_time'].set_xlabel('Epochs')
     graphs['ax_time'].set_ylabel('Time (s)')
     graphs['fig_time'].tight_layout()
@@ -386,11 +386,11 @@ def save_graphs(graphs, name):
     pp.close()
 
 # Analyze NN
-def analyze(param_list, trials, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats):
+def analyze(param_list, trials, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, std_inputs_rep, std_outputs_rep):
     """
     Tests networks with given hyperparameters.
 
-    Inputs: param_list (list), trials (integer), std_inputs (standardized training input data; Pytorch tensor), std_outputs (standardized training output data; Pytorch tensor), std_test_inputs (standardized testing input data; Pytorch tensor), std_test_outputs (standardized testing output data; Pytorch tensor), output_stats (mean, standard deviation) (tuple)
+    Inputs: param_list (list), trials (integer), std_inputs (standardized training input data; Pytorch tensor), std_outputs (standardized training output data; Pytorch tensor), std_test_inputs (standardized testing input data; Pytorch tensor), std_test_outputs (standardized testing output data; Pytorch tensor), output_stats (mean, standard deviation) (tuple), std_inputs_rep (representative inputs; Pytorch tensor), std_outputs_rep (representative outputs; Pytorch tensor)
 
     Outputs: analysis_data (dictionary)
     """
@@ -398,7 +398,7 @@ def analyze(param_list, trials, std_inputs, std_outputs, std_test_inputs, std_te
     for i in param_list:
         for j in range(trials):
             model = create_model(std_inputs, std_outputs, i)
-            graph_data = train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, i, False)
+            graph_data = train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, std_inputs_rep, std_outputs_rep, i, False)
             analysis_data['nodes'] = np.append(analysis_data['nodes'], np.full(i['n_epochs'], i['hidden_nodes']))
             analysis_data['layers'] = np.append(analysis_data['layers'], np.full(i['n_epochs'], i['hidden_layers']))
             analysis_data['epochs'] = np.append(analysis_data['epochs'], graph_data['accu_epochs'])

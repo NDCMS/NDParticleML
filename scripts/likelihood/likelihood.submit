@@ -1,0 +1,26 @@
+universe = vanilla
+executable = likelihood.sh
+
+Log    = ./logs/$(Cluster)_$(Process).log
+Output = ./logs/$(Cluster)_$(Process).out
+Error  = ./logs/$(Cluster)_$(Process).err
+
+should_transfer_files = YES
+transfer_input_files = likelihood.py, NN_Module.py, likelihood_data.npz
+when_to_transfer_output = ON_EXIT
+# Must specify to transfer entire directories
+transfer_output_files = graphs
+
+# Enable Singularity feature
+## Notre Dame Images
+# doesn't give latest Pytorch: +SingularityImage = "/cvmfs/singularity.opensciencegrid.org/notredamedulac/el7-pytorch-gpu:latest"
++SingularityImage = "/afs/crc.nd.edu/x86_64_linux/s/singularity/images/pytorch-1.9.sif"
+
+request_gpus   = 1
+request_memory = 1 Gb
+request_cpus   = 1
+
+# Don't forget to include training files in transfer_input_files above
+queue arguments from (
+   -o $(Cluster)_$(Process) -n 1000 -l 2 -b 5000 -e 10 -lr 1e-4 -lrr 0.2 -lrrp 5 -lrrt 1e-6 -wd 0 -aor 100 -orr 100
+)

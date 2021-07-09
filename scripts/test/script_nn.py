@@ -13,18 +13,7 @@ import argparse
 
 # Functions
 
-# Target function to approximate
-def target_func(input):
-    """
-    This is the fucntion the network will try to approximate.
-
-    Inputs: input (Pytorch tensor)
-
-    Outputs: output (Pytorch tensor)
-    """
-    return torch.unsqueeze(input[:,0]**2 + input[:,1], 1)
-
-# Store Arguments
+# Store arguments
 parser = argparse.ArgumentParser(description='Train network.')
 parser.add_argument('-o','--out-file', 
                     help='Name of output file')
@@ -108,11 +97,16 @@ std_test_inputs = nnm.affine_transform(test_inputs, input_stats) # Not actually 
 std_outputs = nnm.affine_transform(outputs, output_stats)
 std_test_outputs = nnm.affine_transform(test_outputs, output_stats)
 
+# Create a representative training set
+index_std_train_rep = np.random.choice(parameters['train_size'], parameters['test_size'], replace=False)
+std_inputs_rep = std_inputs[index_std_train_rep]
+std_outputs_rep = std_outputs[index_std_train_rep]
+
 # Create a model
 model = nnm.create_model(inputs, outputs, parameters)
 
 # Train the model
-graph_data = nnm.train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, parameters)
+graph_data = nnm.train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, std_inputs_rep, std_outputs_rep, parameters)
 
 # Graphing
 graphs = nnm.new_graphs()
