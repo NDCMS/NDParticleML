@@ -82,19 +82,19 @@ def accu_test(prediction, actual):
 v_accu_test = np.vectorize(accu_test) # This makes a vector function for convenience
 
 # Create a simple neural network with layer and node variabliltiy
-def create_model(inputs, outputs, parameters):
+def create_model(input_dim, output_dim, parameters):
     """
     Creates a sequential model with the same number of nodes in each hidden layer.
 
-    Inputs: inputs (Pytorch tensor), outputs (Pytorch tensor), parameters (dictionary)
+    Inputs: input_dim (integer), output_dim (integer), parameters (dictionary)
 
     Outputs: model (Pytorch sequential container)
     """
-    layers = [torch.nn.Linear(inputs.shape[1],parameters['hidden_nodes']),torch.nn.ReLU()]
+    layers = [torch.nn.Linear(input_dim,parameters['hidden_nodes']),torch.nn.ReLU()]
     for i in range(parameters['hidden_layers']):
         layers.append(torch.nn.Linear(parameters['hidden_nodes'],parameters['hidden_nodes']))
         layers.append(torch.nn.ReLU())
-    layers.append(torch.nn.Linear(parameters['hidden_nodes'],1)) # We only care about functions with one output
+    layers.append(torch.nn.Linear(parameters['hidden_nodes'],output_dim)) # We only care about functions with one output
     model = torch.nn.Sequential(*layers)
     # include different number of nodes per layer functionality
     #list with nodes per layer

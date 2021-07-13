@@ -170,7 +170,7 @@ std_inputs_rep = std_inputs[index_std_train_rep]
 std_outputs_rep = std_outputs[index_std_train_rep]
 
 # Create a model
-model = nnm.create_model(inputs, outputs, parameters)
+model = nnm.create_model(inputs.shape[1], outputs.shape[1], parameters)
 
 # Train the model
 (graph_data, best_model_state, parameters_save) = nnm.train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, std_inputs_rep, std_outputs_rep, parameters)
