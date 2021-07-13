@@ -15,6 +15,14 @@ import argparse
 
 # Store arguments
 parser = argparse.ArgumentParser(description='Train network.')
+parser.add_argument('-m','--min', 
+                    type=int,
+                    help='Minimum output to be included in the training set')
+                    
+parser.add_argument('-M','--max', 
+                    type=int,
+                    help='Maximum output to be included in the training set')
+
 parser.add_argument('-o','--out-file', 
                     help='Name of output file')
 
@@ -105,11 +113,12 @@ for i in range(16):
         inputs_list.append(np.expand_dims(inputs_all[:,i] *  inputs_all[:,j], axis=1))
 inputs_all = np.concatenate(inputs_list, axis=1)
 
-# Save only the points with output smaller than upper, don't forget to change the size of the network accordingly!
-upper = 75
-less_than_upper = (outputs_all < upper)
-outputs_all = outputs_all[less_than_upper]
-inputs_all = inputs_all[less_than_upper]
+# Save only the points in the interval; don't forget to change the size of the network accordingly!
+lower = args.min
+upper = args.max
+idx = (outputs_all > lower) & (outputs_all < upper)
+outputs_all = outputs_all[idx]
+inputs_all = inputs_all[idx]
 
 # Prepare to split into training and validation sets
 total_data = outputs_all.shape[0]
@@ -164,7 +173,7 @@ std_outputs_rep = std_outputs[index_std_train_rep]
 model = nnm.create_model(inputs, outputs, parameters)
 
 # Train the model
-graph_data = nnm.train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, std_inputs_rep, std_outputs_rep, parameters)
+(graph_data, best_model_state, parameters_save) = nnm.train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, std_inputs_rep, std_outputs_rep, parameters)
 
 # Graphing
 graphs = nnm.new_graphs()
@@ -172,6 +181,10 @@ nnm.graphing(graphs, graph_data, parameters)
 
 # Save all graphs
 nnm.save_graphs(graphs, f'./graphs/{args.out_file}.pdf')
+
+# Save the model and parameters
+torch.save(best_model_state, f'./models/{args.out_file}_model.pt')
+torch.save(parameters_save, f'./models/{args.out_file}_parameters.pt')
 
 # See pytorch version
 # print (torch.__version__)

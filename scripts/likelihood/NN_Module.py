@@ -6,6 +6,7 @@ from mpl_toolkits import mplot3d
 import matplotlib.pyplot as plt
 import math
 import time
+import copy
 import pandas as pd
 from pandas import read_csv
 from matplotlib.backends.backend_pdf import PdfPages
@@ -124,6 +125,11 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
     grid_size = (max_graph - min_graph) / parameters['accu_out_resolution']
     grid_accu_tally = np.zeros((parameters['accu_out_resolution'], parameters['n_epochs'], 2))
     grid_num = np.floor((test_outputs_np - min_graph) / grid_size).astype(np.int)
+
+    # Initialize things to save
+    parameters_save = parameters.copy()
+    best_model_state = copy.deepcopy(model.state_dict())
+    best_accu = 0
     
     # Get ready to train
     start_time = time.perf_counter()
@@ -150,7 +156,8 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
             # Data for the accuracy curve
             test_final_prediction_temp = affine_untransform(model(std_test_inputs), output_stats)
             score_temp = v_accu_test(test_final_prediction_temp.cpu().detach().numpy().flatten(), test_outputs_np)
-            graph_data['accu_vals'][epoch] = np.sum(score_temp) / total_num
+            accu_temp = np.sum(score_temp) / total_num
+            graph_data['accu_vals'][epoch] = accu_temp
             graph_data['accu_epochs'][epoch] = epoch
 
             # Data for accu_out
@@ -168,6 +175,12 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
             graph_data['test_loss_epochs'][epoch] = epoch
             graph_data['time_vals'][epoch] = time.perf_counter() - start_time
             graph_data['time_epochs'][epoch] = epoch
+        
+        # Save the best model
+        if accu_temp > best_accu:
+            best_accu = accu_temp
+            best_model_state = copy.deepcopy(model.state_dict())
+            parameters_save['n_epochs'] = epoch
 
         # Things that need to be done every 10 epochs
         if epoch%10 == 0:
@@ -215,7 +228,7 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
 
     print ('Training done!')
     #print ('--- %s seconds ---' % (time.perf_counter() - start_time))
-    return graph_data
+    return (graph_data, best_model_state, parameters_save)
 
 # New graph_data
 def new_graph_data(total_num, epochs):

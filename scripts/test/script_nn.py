@@ -106,7 +106,7 @@ std_outputs_rep = std_outputs[index_std_train_rep]
 model = nnm.create_model(inputs, outputs, parameters)
 
 # Train the model
-graph_data = nnm.train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, std_inputs_rep, std_outputs_rep, parameters)
+(graph_data, best_model_state, parameters_save) = nnm.train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, std_inputs_rep, std_outputs_rep, parameters)
 
 # Graphing
 graphs = nnm.new_graphs()
