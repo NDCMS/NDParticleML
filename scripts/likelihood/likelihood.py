@@ -88,6 +88,30 @@ inputs_all.append(loaded_data['ctli'][use_it])
 inputs_all.append(loaded_data['ctp'][use_it])
 inputs_all = np.stack(inputs_all, axis=1)
 
+# Randomize
+all = np.concatenate([inputs_all, np.expand_dims(outputs_all, axis=1)], axis=1)
+np.random.shuffle(all)
+inputs_all = all[:,:-1]
+outputs_all = all[:,-1]
+
+# Add the squares of the variables and cross terms
+inputs_list = []
+inputs_list.append(inputs_all)
+inputs_all_squared = inputs_all ** 2
+inputs_list.append(inputs_all_squared)
+# Add the cross terms
+for i in range(16):
+    for j in range(i):
+        inputs_list.append(np.expand_dims(inputs_all[:,i] *  inputs_all[:,j], axis=1))
+inputs_all = np.concatenate(inputs_list, axis=1)
+
+# Save only the points with output smaller than upper, don't forget to change the size of the network accordingly!
+upper = 75
+less_than_upper = (outputs_all < upper)
+outputs_all = outputs_all[less_than_upper]
+inputs_all = inputs_all[less_than_upper]
+
+# Prepare to split into training and validation sets
 total_data = outputs_all.shape[0]
 train_proportion = 0.99
 validation_proportion = 0.01

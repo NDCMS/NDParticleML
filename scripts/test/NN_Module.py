@@ -75,7 +75,7 @@ def accu_test(prediction, actual):
 
     Outputs: 1 if close enough, 0 if not close enough (integer)
     """
-    if (abs_err(prediction, actual) < 0.01 or rel_err(prediction, actual) < 0.01):
+    if (abs_err(prediction, actual) < 0.05 or rel_err(prediction, actual) < 0.01):
         return 1
     else: return 0
 v_accu_test = np.vectorize(accu_test) # This makes a vector function for convenience
@@ -178,7 +178,12 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
                 model.eval()
                 
         model.train()
-                
+
+        # Randomize minibatch selection again
+        idx = torch.randperm(torch.numel(std_outputs))
+        inputMiniBatches = torch.split(std_inputs[idx], parameters['batch_size'])
+        outputMiniBatches = torch.split(std_outputs[idx], parameters['batch_size'])
+
         for minibatch in range(numMiniBatch):
             prediction = model(inputMiniBatches[minibatch])
             loss = lossFunc(prediction,outputMiniBatches[minibatch])
