@@ -182,9 +182,9 @@ nnm.graphing(graphs, graph_data, parameters)
 # Save all graphs
 nnm.save_graphs(graphs, f'./graphs/{args.out_file}.pdf')
 
-# Save the model and parameters
-torch.save(best_model_state, f'./models/{args.out_file}_model.pt')
-torch.save(parameters_save, f'./models/{args.out_file}_parameters.pt')
+# Save the model, parameters, and standardization stats
+save_dict = {'model': best_model_state, 'parameters': parameters_save, 'input_stats': input_stats, 'output_stats': output_stats}
+torch.save(save_dict, f'./models/{args.out_file}_model+.pt')
 
 # See pytorch version
 # print (torch.__version__)

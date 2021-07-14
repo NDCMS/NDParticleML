@@ -22,5 +22,5 @@ request_cpus   = 1
 
 # Don't forget to include training files in transfer_input_files above
 queue arguments from (
-   -m 75 -M 300 -o $(Cluster)_$(Process) -n 350 -l 2 -b 1024 -e 50 -lr 1e-3 -lrr 0.2 -lrrp 5 -lrrt 1e-6 -wd 0 -aor 100 -orr 100
+   -m 0 -M 500 -o $(Cluster)_$(Process) -n 650 -l 2 -b 1024 -e 150 -lr 1e-3 -lrr 0.2 -lrrp 5 -lrrt 1e-6 -wd 0 -aor 100 -orr 100
 )
