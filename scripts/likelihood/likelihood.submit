@@ -17,7 +17,7 @@ transfer_output_files = graphs, models
 +SingularityImage = "/afs/crc.nd.edu/x86_64_linux/s/singularity/images/pytorch-1.9.sif"
 
 request_gpus   = 1
-request_memory = 1 Gb
+request_memory = 10 Gb
 request_cpus   = 1
 
 # Don't forget to include training files in transfer_input_files above
