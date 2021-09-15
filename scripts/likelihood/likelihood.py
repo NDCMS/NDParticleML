@@ -73,7 +73,7 @@ parser.add_argument('-orr','--out-residual-resolution',
 args = parser.parse_args()
 
 # Load data sets
-loaded_data = np.load('likelihood_data.npz')
+loaded_data = np.load('likelihood_data_processed.npz')
 use_it = (loaded_data['deltaNLL'] != 0)
 use_it[0] = True # Keep the first of the repeated entries
 outputs_all = loaded_data['deltaNLL'][use_it]
