@@ -350,20 +350,42 @@ def graphing(graphs, graph_data, parameters):
     graphs['ax_loss'].set_yscale('log')
     graphs['fig_loss'].tight_layout()
 
-    h = graphs['ax_out_residual'].hist2d(test_outputs, graph_data['out_residual_vals'], [parameters['out_residual_resolution'], parameters['out_residual_resolution']])
+    h = graphs['ax_out_residual'].hist2d(test_outputs, graph_data['out_residual_vals'], [parameters['out_residual_resolution'], parameters['out_residual_resolution']],norm=colors.LogNorm())
     graphs['ax_out_residual'].set_xlabel('True Outputs')
     graphs['ax_out_residual'].set_ylabel('Residual (actual - prediction)')
     graphs['fig_out_residual'].colorbar(h[3], ax=graphs['ax_out_residual'], label='Frequency')
+    graphs['ax_out_residual'].set_xlim(0,100)
+    graphs['ax_out_residual'].set_ylim(-2,2)
     graphs['fig_out_residual'].tight_layout()
-
-    graphs['ax_weights'].hist(graph_data['weights'], color='b')
+    
+    w1 = graphs['ax_weights'].boxplot(graph_data['weights'], vert = 0, whis = (5,95))
     graphs['ax_weights'].set_xlabel('Weights')
-    graphs['ax_weights'].set_ylabel('Frequency')
+    graphs['ax_weights'].title.set_text('Weights')
 
-    graphs['ax_biases'].hist(graph_data['biases'], color='b')
+    Q3, Q1 = np.percentile(graph_data['weights'], [75 ,25])
+    Bnd = (Q3 - Q1)*1.5
+
+    w2 = graphs['ax_weights_z'].boxplot(graph_data['weights'], vert = 0)
+    graphs['ax_weights_z'].set_xlim(min([i for i in graph_data['weights'] if i>(Q1-Bnd)]), max([i for i in graph_data['weights'] if i<(Q3+Bnd)]))
+    graphs['ax_weights_z'].set_xlabel('Weights')
+    graphs['ax_weights_z'].title.set_text('Weights Zoomed In')
+
+    graphs['fig_weights'].tight_layout()
+
+    
+    b1 = graphs['ax_biases'].boxplot(graph_data['biases'], vert = 0)
     graphs['ax_biases'].set_xlabel('Biases')
-    graphs['ax_biases'].set_ylabel('Frequency')
-    graphs['fig_histograms'].tight_layout()
+    graphs['ax_biases'].title.set_text('Biases')
+    
+    Q3, Q1 = np.percentile(graph_data['biases'], [75 ,25])
+    Bnd = (Q3 - Q1)*1.5
+   
+    b2 = graphs['ax_biases_z'].boxplot(graph_data['biases'], vert = 0)
+    graphs['ax_biases_z'].set_xlim(min([i for i in graph_data['biases'] if i>(Q1-Bnd)]), max([i for i in graph_data['biases'] if i<(Q3+Bnd)]))
+    graphs['ax_biases_z'].set_xlabel('Biases')
+    graphs['ax_biases_z'].title.set_text('Biases Zoomed In')
+
+    graphs['fig_biases'].tight_layout()
 
     return graphs
 
