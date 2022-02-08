@@ -11,6 +11,10 @@ from pandas import read_csv
 import argparse
 from matplotlib.backends.backend_pdf import PdfPages
 
+# This program demonstrates how to scan all points at once, i.e., do a single gradient descent to profile the other WCs for all values of the scanned WC.
+
+# This program only uses one random starting point for each scanned value.
+
 # Functions
 def evaluate(inputs):
     # Assumes model uses square and cross terms as well as standardization
@@ -89,29 +93,32 @@ for key in name_list:
     inputs_old = actual_zoomed_profiled_graph_data[key][key]
     model_zoomed_profiled_graph_data[key] = {key: inputs_old[:,names[key]], 'deltaNLL': np.zeros_like(inputs_old[:,names[key]])}
     num_inputs = inputs_old.shape[0]
-    for i in range(num_inputs):
-        min_output = 1000
-        for rndpts in range(10):
-            inputs = (np.random.random_sample(inputs_old.shape) - 0.5) * 40
-            inputs[:,names[key]] = inputs_old[:,names[key]] # copy over the WC being scanned, while leaving the other 15 randomized
-            inputs = torch.from_numpy(inputs)
-            inputs.requires_grad = True
+    inputs = (np.random.random_sample(inputs_old.shape) - 0.5) * 40
+    inputs[:,names[key]] = inputs_old[:,names[key]] # copy over the WC being scanned, while leaving the other 15 randomized
+    inputs = torch.from_numpy(inputs)
+    inputs.requires_grad = True
 
-            optimizer = torch.optim.Adam([inputs],lr=2e-0)
-            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.2, patience=5, threshold=1e-6)
-            for epoch in range(epochs):
-                output = evaluate(inputs[i:i+1,:])
-                output_cp = output.detach().clone()
-                if output_cp < min_output:
-                    min_output = output_cp
-                    min_WCs = inputs[i].detach().clone()
-                optimizer.zero_grad()
-                output.backward()
-                inputs.grad[:,names[key]] = 0
-                optimizer.step()
-                #scheduler.step(output)
-        model_zoomed_profiled_graph_data[key]['deltaNLL'][i] = min_output * 2
-        print (min_WCs)
+    min_output = evaluate(inputs) # The outputs of the random starting points, to be updated every epoch
+    min_WCs = inputs.detach().clone() # A snapshot of the WCs of all the points to scan
+
+    optimizer = torch.optim.Adam([inputs],lr=2e-0)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.2, patience=5, threshold=1e-6)
+    optimizer.zero_grad()
+    for epoch in range(epochs):
+        output = evaluate(inputs)
+        output_cp = output.detach().clone()
+        output_sum = torch.sum(output)
+        idx_to_update = torch.where(output_cp < min_output)[0]
+        min_output[idx_to_update] = output_cp[idx_to_update]
+        min_WCs[idx_to_update] = inputs.detach().clone()[idx_to_update]
+        optimizer.zero_grad()
+        output_sum.backward()
+        inputs.grad[:,names[key]] = 0
+        optimizer.step()
+        #scheduler.step(output)
+    model_zoomed_profiled_graph_data[key]['deltaNLL'] = min_output.cpu().detach().numpy().flatten() * 2
+    print (min_WCs)
+        
 
 zoomed_profiled_graphs = {}
 for key in name_list:

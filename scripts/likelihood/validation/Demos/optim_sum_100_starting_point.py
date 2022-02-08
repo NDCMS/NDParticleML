@@ -11,22 +11,27 @@ from pandas import read_csv
 import argparse
 from matplotlib.backends.backend_pdf import PdfPages
 
+torch.set_printoptions(threshold=10000) # So big tensors can be printed without summary
+
 # Functions
 def evaluate(inputs):
     # Assumes model uses square and cross terms as well as standardization
     # Currently only uses a slice of inputs_all
-    num_inputs = inputs.shape[0]
-    inputs_all = torch.zeros((num_inputs, 152)).cuda()
+    all_shape = list(inputs.shape) # The shape of the final input tensor, including the square and cross terms
+    all_shape[-1] = 152
+    cross_shape = list(inputs.shape) # The shape of the input cross terms tensor
+    cross_shape[-1] = 120
+    inputs_all = torch.zeros(all_shape).cuda()
     squares = inputs**2
-    cross_terms = torch.zeros((num_inputs, 120)).cuda()
+    cross_terms = torch.zeros(cross_shape).cuda()
     idx = 0
     for i in range(16):
         for j in range(i):
-            cross_terms[:,idx] = inputs[:,i] * inputs[:,j]
+            cross_terms[...,idx] = inputs[...,i] * inputs[...,j]
             idx += 1
-    inputs_all[:,0:16] = inputs
-    inputs_all[:,16:32] = squares
-    inputs_all[:,32:152] = cross_terms
+    inputs_all[...,0:16] = inputs
+    inputs_all[...,16:32] = squares
+    inputs_all[...,32:152] = cross_terms
     std_inputs = nnm.affine_transform(inputs_all, input_stats)
     std_outputs = model(std_inputs)
     outputs = nnm.affine_untransform(std_outputs, output_stats)
@@ -66,15 +71,16 @@ model.load_state_dict(best_model_state)
 model.eval()
 
 epochs = 100
+random_starting_points = 100 # The number of random starting points to do gradient descent on for each scanned value
 
 actual_profiled_graph_data = {}
 for key in name_list:
-    loaded = np.load(f'likelihood_profiled_{key}.npz')
-    inputs = np.zeros((loaded['deltaNLL'].shape[0], 16))
+    loaded = np.load(f'likelihood_profiled_{key}.npz') # A dictionary with WC names as keys
+    inputs = np.zeros((loaded['deltaNLL'].shape[0], random_starting_points, 16))
     for key2 in names.keys():
-        inputs[:,names[key2]] = loaded[key2]
+        inputs[...,names[key2]] = loaded[key2][:,np.newaxis]
     actual_profiled_graph_data[key] = {key: inputs, 'deltaNLL': loaded['deltaNLL']}
-    actual_profiled_graph_data[key]['deltaNLL'] -= actual_profiled_graph_data[key]['deltaNLL'].min()
+    # actual_profiled_graph_data[key]['deltaNLL'] -= actual_profiled_graph_data[key]['deltaNLL'].min()
     actual_profiled_graph_data[key]['deltaNLL'] *= 2
 
 actual_zoomed_profiled_graph_data = {}
@@ -87,31 +93,43 @@ model_zoomed_profiled_graph_data = {}
 for key in name_list:
     torch.autograd.set_detect_anomaly(True)
     inputs_old = actual_zoomed_profiled_graph_data[key][key]
-    model_zoomed_profiled_graph_data[key] = {key: inputs_old[:,names[key]], 'deltaNLL': np.zeros_like(inputs_old[:,names[key]])}
+    model_zoomed_profiled_graph_data[key] = {key: inputs_old[..., 0, names[key]], 'deltaNLL': np.zeros_like(inputs_old[..., 0, names[key]])}
     num_inputs = inputs_old.shape[0]
-    for i in range(num_inputs):
-        min_output = 1000
-        for rndpts in range(10):
-            inputs = (np.random.random_sample(inputs_old.shape) - 0.5) * 40
-            inputs[:,names[key]] = inputs_old[:,names[key]] # copy over the WC being scanned, while leaving the other 15 randomized
-            inputs = torch.from_numpy(inputs)
-            inputs.requires_grad = True
+    inputs = (np.random.random_sample(inputs_old.shape) - 0.5) * 40
+    inputs[...,names[key]] = inputs_old[...,names[key]] # copy over the WC being scanned, while leaving the other 15 randomized
+    inputs = torch.from_numpy(inputs).cuda()
+    inputs.requires_grad = True
 
-            optimizer = torch.optim.Adam([inputs],lr=2e-0)
-            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.2, patience=5, threshold=1e-6)
-            for epoch in range(epochs):
-                output = evaluate(inputs[i:i+1,:])
-                output_cp = output.detach().clone()
-                if output_cp < min_output:
-                    min_output = output_cp
-                    min_WCs = inputs[i].detach().clone()
-                optimizer.zero_grad()
-                output.backward()
-                inputs.grad[:,names[key]] = 0
-                optimizer.step()
-                #scheduler.step(output)
-        model_zoomed_profiled_graph_data[key]['deltaNLL'][i] = min_output * 2
-        print (min_WCs)
+    min_outputs = evaluate(inputs) # The outputs of the random starting points, to be updated every epoch
+    min_WCs = inputs.detach().clone() # A snapshot of the WCs of all the points to scan
+
+    optimizer = torch.optim.Adam([inputs],lr=2e-0)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.2, patience=5, threshold=1e-6)
+    optimizer.zero_grad()
+    for epoch in range(epochs):
+        outputs = evaluate(inputs)
+        outputs_cp = outputs.detach().clone()
+        outputs_sum = torch.sum(outputs)
+        idx_to_update = torch.where(outputs_cp < min_outputs)[0]
+        min_outputs[idx_to_update] = outputs_cp[idx_to_update]
+        min_WCs[idx_to_update] = inputs.detach().clone()[idx_to_update]
+        optimizer.zero_grad()
+        outputs_sum.backward()
+        inputs.grad[...,names[key]] = 0
+        optimizer.step()
+        #scheduler.step(output)
+    (min_outputs_scanned, min_starting_point_indicies) = torch.min(min_outputs, -2) # Get the best all starting points
+
+    # Make the indix tensor suitable for gathering the min_WCs
+    min_starting_point_indicies = min_starting_point_indicies.unsqueeze(-2)
+    min_starting_point_indicies_shape = list(min_starting_point_indicies.shape)
+    min_starting_point_indicies_shape[-1] = 16
+    min_starting_point_indicies = min_starting_point_indicies.expand(min_starting_point_indicies_shape) # Warning: don't perform in-place operations on this since expand() does not allocate new memory
+
+    min_WCs_scanned = torch.gather(min_WCs, -2, min_starting_point_indicies) # Get the WCs corresponding to the best-performing starting points
+    model_zoomed_profiled_graph_data[key]['deltaNLL'] = min_outputs_scanned.cpu().detach().numpy().flatten() * 2
+    print (key)
+    print (min_WCs_scanned)
 
 zoomed_profiled_graphs = {}
 for key in name_list:
@@ -130,3 +148,6 @@ pp = PdfPages(f'./graphs/{out_file}_validation.pdf')
 for key in name_list:
     pp.savefig(zoomed_profiled_graphs[key][0])
 pp.close()
+
+# Bug to fix in WC output
+# Change DeltaNLL zeros-like to something positive
