@@ -10,7 +10,7 @@ import copy
 import pandas as pd
 from pandas import read_csv
 from matplotlib.backends.backend_pdf import PdfPages
-
+from matplotlib import colors as colors
 # Functions
 
 # Sets error calculations
