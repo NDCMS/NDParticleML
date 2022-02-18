@@ -97,8 +97,8 @@ inputs_all.append(loaded_data['ctp'][use_it])
 inputs_all = np.stack(inputs_all, axis=1)
 inmin = np.min(inputs_all)
 inputs_all = inputs_all-inmin
-inputs_all = inputs_all[:5*10**5,:]
-outputs_all = outputs_all[:5*10**5]
+inputs_all = inputs_all[:5*10**6,:]
+outputs_all = outputs_all[:5*10**6]
 # Randomize
 all = np.concatenate([inputs_all, np.expand_dims(outputs_all, axis=1)], axis=1)
 np.random.shuffle(all)
