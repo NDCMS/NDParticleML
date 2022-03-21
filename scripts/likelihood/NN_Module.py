@@ -10,8 +10,8 @@ import copy
 import pandas as pd
 from pandas import read_csv
 from matplotlib.backends.backend_pdf import PdfPages
-from matplotlib import colors as colors
-import argparse
+import polynomial as poly
+
 # Functions
 
 # Sets error calculations
@@ -91,7 +91,8 @@ def create_model(input_dim, output_dim, parameters):
 
     Outputs: model (Pytorch sequential container)
     """
-    layers = [torch.nn.Linear(input_dim,parameters['hidden_nodes']),torch.nn.ReLU()]
+    layers = [poly.PolynomialLayer(16,2,parameters['hidden_nodes']), torch.nn.ReLU()]
+#     layers = [torch.nn.Linear(input_dim,parameters['hidden_nodes']),torch.nn.ReLU()]
     for i in range(parameters['hidden_layers']):
         layers.append(torch.nn.Linear(parameters['hidden_nodes'],parameters['hidden_nodes']))
         layers.append(torch.nn.ReLU())
@@ -201,7 +202,9 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
         for minibatch in range(numMiniBatch):
             prediction = model(inputMiniBatches[minibatch])
             loss = lossFunc(prediction,outputMiniBatches[minibatch])
-            optimizer.zero_grad()
+            for param in model.parameters():
+                param.grad = None
+            #optimizer.zero_grad(set_to_none=True)
             loss.backward()
             optimizer.step()
         scheduler.step(test_std_loss_temp)
@@ -228,14 +231,17 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
     graph_data['test_outputs'] = test_outputs_np
 
     print ('Training done!')
-    #print ('--- %s seconds ---' % (time.perf_counter() - start_time))
+    print ('--- %s seconds ---' % (time.perf_counter() - start_time))
+    print('Best accuracy: ', best_accu, ', achieved in ', parameters_save['n_epochs'], 'epochs')
     return (graph_data, best_model_state, parameters_save)
 
 # New graph_data
 def new_graph_data(total_num, epochs):
     """
     Creates a new data dictionary for graphing later; The graphs are those pertaining to one run of one architecture only.
+
     Inputs: total_num (the total number of testing data points; integer), epochs (integer)
+
     Outputs: graph_data (dictionary)
     """
     graph_data = {}
@@ -260,7 +266,9 @@ def new_graph_data(total_num, epochs):
 def new_analysis_data():
     """
     Creates a new data dictionary to store the performance results of different networks.
+
     Inputs: None
+
     Outputs: analysis_data (dictionary)
     """
     analysis_data = {}
@@ -276,7 +284,9 @@ def new_analysis_data():
 def new_graphs():
     """
     Creates new graphs.
+
     Inputs: None
+
     Outputs: graphs (dictionary)
     """
     fig_time, ax_time = plt.subplots()
@@ -285,10 +295,9 @@ def new_graphs():
     fig_accu, ax_accu = plt.subplots()
     fig_accu_out, (ax_out_freq, ax_accu_out) = plt.subplots(nrows=1, ncols=2)
     fig_out_residual, ax_out_residual = plt.subplots()
-    fig_weights, (ax_weights, ax_weights_z) = plt.subplots(nrows=2, ncols=1)
-    fig_biases, (ax_biases, ax_biases_z) = plt.subplots(nrows=2, ncols=1)
+    fig_histograms, (ax_weights, ax_biases) = plt.subplots(nrows=1, ncols=2)
 
-    return {'fig_time': fig_time, 'ax_time': ax_time, 'fig_param': fig_param, 'ax_param': ax_param, 'fig_loss': fig_loss, 'ax_loss': ax_loss, 'fig_accu': fig_accu, 'ax_accu': ax_accu, 'fig_accu_out': fig_accu_out, 'ax_out_freq': ax_out_freq, 'ax_accu_out': ax_accu_out, 'fig_out_residual': fig_out_residual, 'ax_out_residual': ax_out_residual, 'fig_weights': fig_weights,'ax_weights': ax_weights,'ax_weights_z': ax_weights_z, 'fig_biases': fig_biases,'ax_biases': ax_biases,'ax_biases_z': ax_biases_z,}
+    return {'fig_time': fig_time, 'ax_time': ax_time, 'fig_param': fig_param, 'ax_param': ax_param, 'fig_loss': fig_loss, 'ax_loss': ax_loss, 'fig_accu': fig_accu, 'ax_accu': ax_accu, 'fig_accu_out': fig_accu_out, 'ax_out_freq': ax_out_freq, 'ax_accu_out': ax_accu_out, 'fig_out_residual': fig_out_residual, 'ax_out_residual': ax_out_residual, 'fig_histograms': fig_histograms, 'ax_weights': ax_weights, 'ax_biases': ax_biases}
 
 # Do the graphing
 def graphing(graphs, graph_data, parameters):
@@ -346,42 +355,20 @@ def graphing(graphs, graph_data, parameters):
     graphs['ax_loss'].set_yscale('log')
     graphs['fig_loss'].tight_layout()
 
-    h = graphs['ax_out_residual'].hist2d(test_outputs, graph_data['out_residual_vals'], [parameters['out_residual_resolution'], parameters['out_residual_resolution']],norm=colors.LogNorm())
+    h = graphs['ax_out_residual'].hist2d(test_outputs, graph_data['out_residual_vals'], [parameters['out_residual_resolution'], parameters['out_residual_resolution']])
     graphs['ax_out_residual'].set_xlabel('True Outputs')
     graphs['ax_out_residual'].set_ylabel('Residual (actual - prediction)')
     graphs['fig_out_residual'].colorbar(h[3], ax=graphs['ax_out_residual'], label='Frequency')
-    graphs['ax_out_residual'].set_xlim(0,100)
-    graphs['ax_out_residual'].set_ylim(-2,2)
     graphs['fig_out_residual'].tight_layout()
-    
-    w1 = graphs['ax_weights'].boxplot(graph_data['weights'], vert = 0, whis = (5,95))
+
+    graphs['ax_weights'].hist(graph_data['weights'], color='b')
     graphs['ax_weights'].set_xlabel('Weights')
-    graphs['ax_weights'].title.set_text('Weights')
+    graphs['ax_weights'].set_ylabel('Frequency')
 
-    Q3, Q1 = np.percentile(graph_data['weights'], [75 ,25])
-    Bnd = (Q3 - Q1)*1.5
-
-    w2 = graphs['ax_weights_z'].boxplot(graph_data['weights'], vert = 0)
-    graphs['ax_weights_z'].set_xlim(min([i for i in graph_data['weights'] if i>(Q1-Bnd)]), max([i for i in graph_data['weights'] if i<(Q3+Bnd)]))
-    graphs['ax_weights_z'].set_xlabel('Weights')
-    graphs['ax_weights_z'].title.set_text('Weights Zoomed In')
-
-    graphs['fig_weights'].tight_layout()
-
-    
-    b1 = graphs['ax_biases'].boxplot(graph_data['biases'], vert = 0)
+    graphs['ax_biases'].hist(graph_data['biases'], color='b')
     graphs['ax_biases'].set_xlabel('Biases')
-    graphs['ax_biases'].title.set_text('Biases')
-    
-    Q3, Q1 = np.percentile(graph_data['biases'], [75 ,25])
-    Bnd = (Q3 - Q1)*1.5
-   
-    b2 = graphs['ax_biases_z'].boxplot(graph_data['biases'], vert = 0)
-    graphs['ax_biases_z'].set_xlim(min([i for i in graph_data['biases'] if i>(Q1-Bnd)]), max([i for i in graph_data['biases'] if i<(Q3+Bnd)]))
-    graphs['ax_biases_z'].set_xlabel('Biases')
-    graphs['ax_biases_z'].title.set_text('Biases Zoomed In')
-
-    graphs['fig_biases'].tight_layout()
+    graphs['ax_biases'].set_ylabel('Frequency')
+    graphs['fig_histograms'].tight_layout()
 
     return graphs
 
@@ -389,7 +376,9 @@ def graphing(graphs, graph_data, parameters):
 def show_graphs(graphs):
     """
     Shows the graphs.
+
     Inputs: graphs (dictionary)
+
     Outputs: None
     """
     graphs['fig_time']
@@ -398,14 +387,15 @@ def show_graphs(graphs):
     graphs['fig_accu']
     graphs['fig_accu_out']
     graphs['fig_out_residual']
-    graphs['fig_weights']
-    graphs['fig_biases']
+    graphs['fig_histograms']
 
 # Save all graphs in one pdf file
 def save_graphs(graphs, name):
     """
     Saves the graphs to one pdf.
+
     Inputs: graphs (dictionary), name (string)
+
     Outputs: None
     """
     pp = PdfPages(name)
@@ -415,10 +405,9 @@ def save_graphs(graphs, name):
     pp.savefig(graphs['fig_accu'])
     pp.savefig(graphs['fig_accu_out'])
     pp.savefig(graphs['fig_out_residual'])
-    pp.savefig(graphs['fig_weights'])
-    pp.savefig(graphs['fig_biases'])
+    pp.savefig(graphs['fig_histograms'])
     pp.close()
-    
+
 # Analyze NN
 def analyze(param_list, trials, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, std_inputs_rep, std_outputs_rep):
     """
