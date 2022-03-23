@@ -354,14 +354,14 @@ def graphing(graphs, graph_data, parameters):
     graphs['ax_out_residual'].set_ylim(-2,2)
     graphs['fig_out_residual'].tight_layout()
     
-    w1 = graphs['ax_weights'].boxplot(graph_data['weights'], vert = 0, whis = (5,95))
+    w1 = graphs['ax_weights'].boxplot(graph_data['weights'], vert = 0, whis = (5,95),showfliers=False)
     graphs['ax_weights'].set_xlabel('Weights')
     graphs['ax_weights'].title.set_text('Weights')
 
     Q3, Q1 = np.percentile(graph_data['weights'], [75 ,25])
     Bnd = (Q3 - Q1)*1.5
 
-    w2 = graphs['ax_weights_z'].boxplot(graph_data['weights'], vert = 0)
+    w2 = graphs['ax_weights_z'].boxplot(graph_data['weights'], vert = 0,showfliers=False)
     graphs['ax_weights_z'].set_xlim(min([i for i in graph_data['weights'] if i>(Q1-Bnd)]), max([i for i in graph_data['weights'] if i<(Q3+Bnd)]))
     graphs['ax_weights_z'].set_xlabel('Weights')
     graphs['ax_weights_z'].title.set_text('Weights Zoomed In')
@@ -369,14 +369,14 @@ def graphing(graphs, graph_data, parameters):
     graphs['fig_weights'].tight_layout()
 
     
-    b1 = graphs['ax_biases'].boxplot(graph_data['biases'], vert = 0)
+    b1 = graphs['ax_biases'].boxplot(graph_data['biases'], vert = 0,showfliers=False)
     graphs['ax_biases'].set_xlabel('Biases')
     graphs['ax_biases'].title.set_text('Biases')
     
     Q3, Q1 = np.percentile(graph_data['biases'], [75 ,25])
     Bnd = (Q3 - Q1)*1.5
    
-    b2 = graphs['ax_biases_z'].boxplot(graph_data['biases'], vert = 0)
+    b2 = graphs['ax_biases_z'].boxplot(graph_data['biases'], vert = 0,showfliers=False)
     graphs['ax_biases_z'].set_xlim(min([i for i in graph_data['biases'] if i>(Q1-Bnd)]), max([i for i in graph_data['biases'] if i<(Q3+Bnd)]))
     graphs['ax_biases_z'].set_xlabel('Biases')
     graphs['ax_biases_z'].title.set_text('Biases Zoomed In')
