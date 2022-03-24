@@ -18,18 +18,14 @@ import argparse
 def abs_err(pred, act):
     """
     Returns the absolute error of two numbers.
-
     Inputs: pred (float), act (float)
-
     Outputs: the absolute error (float)
     """
     return abs(pred-act)
 def rel_err(pred, act):
     """
     Returns the relative error of two numbers.
-
     Inputs: pred (float), act (float)
-
     Outputs: the relative error (float)
     """
     if act == 0: return 9e+10
@@ -38,9 +34,7 @@ def rel_err(pred, act):
 def affine_transform(tensor, stats):
     """
     Subtracts mean and divides by standard deviation.
-
     Inputs: tensor (Pytorch tensor), stats (mean, standard deviation) (tuple)
-
     Outputs: tensor (Pytorch tensor)
     """
     return (tensor - stats[0]) / stats[1]
@@ -48,9 +42,7 @@ def affine_transform(tensor, stats):
 def affine_untransform(tensor, stats):
     """
     Inverse function of affine_transform. Multiplies by stddev and adds mean.
-
     Inputs: tensor (Pytorch tensor), stats (mean, standard deviation) (tuple)
-
     Outputs: tensor (Pytorch tensor)
     """
     return tensor * stats[1] + stats[0]
@@ -58,9 +50,7 @@ def affine_untransform(tensor, stats):
 def find_stats(tensor):
     """
     Finds the mean and standard deviation per coordinate.
-
     Inputs: tensor (Pytorch tensor)
-
     Outputs: (mean, stddev) (tuple)
     """
     mean = torch.mean(tensor, 0)
@@ -72,9 +62,7 @@ def find_stats(tensor):
 def accu_test(prediction, actual):
     """
     Tests if two numbers are close enough (0.01 absolute error or 1% relative error).
-
     Inputs: prediction (float), actual (float)
-
     Outputs: 1 if close enough, 0 if not close enough (integer)
     """
     if (abs_err(prediction, actual) < 0.05 or rel_err(prediction, actual) < 0.01):
@@ -86,9 +74,7 @@ v_accu_test = np.vectorize(accu_test) # This makes a vector function for conveni
 def create_model(input_dim, output_dim, parameters):
     """
     Creates a sequential model with the same number of nodes in each hidden layer.
-
     Inputs: input_dim (integer), output_dim (integer), parameters (dictionary)
-
     Outputs: model (Pytorch sequential container)
     """
     layers = [torch.nn.Linear(input_dim,parameters['hidden_nodes']),torch.nn.ReLU()]
@@ -105,9 +91,7 @@ def create_model(input_dim, output_dim, parameters):
 def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, std_inputs_rep, std_outputs_rep, parameters, show_progress = True):
     """
     Trains a network of a given architecture.
-
     Inputs: model (Pytorch sequential container), hidden_nodes (the number of nodes in each hidden layer (the same for all layers); integer), hidden_layers (integer), std_inputs (standardized training input data; Pytorch tensor), std_outputs (standardized training output data; Pytorch tensor), std_test_inputs (standardized testing input data; Pytorch tensor), std_test_outputs (standardized testing output data; Pytorch tensor), output_stats (mean, standard deviation) (tuple), std_inputs_rep (representative inputs; Pytorch tensor), std_outputs_rep (representative outputs; Pytorch tensor), parameters (dictionary), show_progress (boolean)
-
     Outputs: graph_data (dictionary)
     """
     # Useful information
@@ -285,18 +269,16 @@ def new_graphs():
     fig_accu, ax_accu = plt.subplots()
     fig_accu_out, (ax_out_freq, ax_accu_out) = plt.subplots(nrows=1, ncols=2)
     fig_out_residual, ax_out_residual = plt.subplots()
-    fig_weights, (ax_weights, ax_weights_z) = plt.subplots(nrows=2, ncols=1)
-    fig_biases, (ax_biases, ax_biases_z) = plt.subplots(nrows=2, ncols=1)
+    fig_weights, ax_weights = plt.subplots()
+    fig_biases, ax_biases = plt.subplots()
 
-    return {'fig_time': fig_time, 'ax_time': ax_time, 'fig_param': fig_param, 'ax_param': ax_param, 'fig_loss': fig_loss, 'ax_loss': ax_loss, 'fig_accu': fig_accu, 'ax_accu': ax_accu, 'fig_accu_out': fig_accu_out, 'ax_out_freq': ax_out_freq, 'ax_accu_out': ax_accu_out, 'fig_out_residual': fig_out_residual, 'ax_out_residual': ax_out_residual, 'fig_weights': fig_weights,'ax_weights': ax_weights,'ax_weights_z': ax_weights_z, 'fig_biases': fig_biases,'ax_biases': ax_biases,'ax_biases_z': ax_biases_z,}
+    return {'fig_time': fig_time, 'ax_time': ax_time, 'fig_param': fig_param, 'ax_param': ax_param, 'fig_loss': fig_loss, 'ax_loss': ax_loss, 'fig_accu': fig_accu, 'ax_accu': ax_accu, 'fig_accu_out': fig_accu_out, 'ax_out_freq': ax_out_freq, 'ax_accu_out': ax_accu_out, 'fig_out_residual': fig_out_residual, 'ax_out_residual': ax_out_residual, 'fig_weights': fig_weights,'ax_weights': ax_weights,'fig_biases': fig_biases,'ax_biases': ax_biases,}
 
 # Do the graphing
 def graphing(graphs, graph_data, parameters):
     """
     Does the graphing.
-
     Inputs: graphs (dictionary), graph_data (dictionary), parameters (dictionary)
-
     Outputs: graphs (dictionary)
     """
     test_outputs = graph_data['test_outputs']
@@ -357,31 +339,10 @@ def graphing(graphs, graph_data, parameters):
     w1 = graphs['ax_weights'].boxplot(graph_data['weights'], vert = 0, whis = (5,95),showfliers=False)
     graphs['ax_weights'].set_xlabel('Weights')
     graphs['ax_weights'].title.set_text('Weights')
-
-    Q3, Q1 = np.percentile(graph_data['weights'], [75 ,25])
-    Bnd = (Q3 - Q1)*1.5
-
-    w2 = graphs['ax_weights_z'].boxplot(graph_data['weights'], vert = 0,showfliers=False)
-    graphs['ax_weights_z'].set_xlim(min([i for i in graph_data['weights'] if i>(Q1-Bnd)]), max([i for i in graph_data['weights'] if i<(Q3+Bnd)]))
-    graphs['ax_weights_z'].set_xlabel('Weights')
-    graphs['ax_weights_z'].title.set_text('Weights Zoomed In')
-
-    graphs['fig_weights'].tight_layout()
-
     
     b1 = graphs['ax_biases'].boxplot(graph_data['biases'], vert = 0,showfliers=False)
     graphs['ax_biases'].set_xlabel('Biases')
     graphs['ax_biases'].title.set_text('Biases')
-    
-    Q3, Q1 = np.percentile(graph_data['biases'], [75 ,25])
-    Bnd = (Q3 - Q1)*1.5
-   
-    b2 = graphs['ax_biases_z'].boxplot(graph_data['biases'], vert = 0,showfliers=False)
-    graphs['ax_biases_z'].set_xlim(min([i for i in graph_data['biases'] if i>(Q1-Bnd)]), max([i for i in graph_data['biases'] if i<(Q3+Bnd)]))
-    graphs['ax_biases_z'].set_xlabel('Biases')
-    graphs['ax_biases_z'].title.set_text('Biases Zoomed In')
-
-    graphs['fig_biases'].tight_layout()
 
     return graphs
 
@@ -423,9 +384,7 @@ def save_graphs(graphs, name):
 def analyze(param_list, trials, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, std_inputs_rep, std_outputs_rep):
     """
     Tests networks with given hyperparameters.
-
     Inputs: param_list (list), trials (integer), std_inputs (standardized training input data; Pytorch tensor), std_outputs (standardized training output data; Pytorch tensor), std_test_inputs (standardized testing input data; Pytorch tensor), std_test_outputs (standardized testing output data; Pytorch tensor), output_stats (mean, standard deviation) (tuple), std_inputs_rep (representative inputs; Pytorch tensor), std_outputs_rep (representative outputs; Pytorch tensor)
-
     Outputs: analysis_data (dictionary)
     """
     analysis_data = new_analysis_data()
@@ -444,9 +403,7 @@ def analyze(param_list, trials, std_inputs, std_outputs, std_test_inputs, std_te
 def new_analysis_graphs():
     """
     Creates new analysis graphs.
-
     Inputs: None
-
     Outputs: analysis_graphs (dictionary)
     """
     fig_analysis, ax_analysis = plt.subplots()
@@ -457,9 +414,7 @@ def new_analysis_graphs():
 def analysis_graphing(analysis_graphs, analysis_data, param_list, trials):
     """
     Does the analysis graphing.
-
     Inputs: analysis_graphs (dictionary), analysis_data (dictionary), param_list (list), trials (integer)
-
     Outputs: analysis_graphs (dictionary)
     """
     analysis_graphs['ax_analysis'].set_xlabel('Time (s)')
