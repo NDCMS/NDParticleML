@@ -73,7 +73,7 @@ parser.add_argument('-mxout','--max-output',
 args = parser.parse_args()
 
 # Load data sets
-loaded_data = np.load('/scratch365/snegash/scripts/likelihood/likelihood_data_no_delta.npz')
+loaded_data = np.load('/scratch365/klannon/dnnlikelihood/likelihood_data_no_delta.npz')
 deltaNLL = loaded_data['deltaNLL']-np.min(loaded_data['deltaNLL'])
 
 # Tune proportion of outputs over 50 vs under 50
