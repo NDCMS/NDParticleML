@@ -6,7 +6,7 @@ Output = ./logs/$(Cluster)_$(Process).out
 Error  = ./logs/$(Cluster)_$(Process).err
 
 should_transfer_files = YES
-transfer_input_files = likelihood.py, NN_Module.py, likelihood_data_processed.npz
+transfer_input_files = likelihood.py, NN_Module.py, polynomial.py
 when_to_transfer_output = ON_EXIT
 # Must specify to transfer entire directories
 transfer_output_files = graphs, models
@@ -17,10 +17,58 @@ transfer_output_files = graphs, models
 +SingularityImage = "/afs/crc.nd.edu/x86_64_linux/s/singularity/images/pytorch-1.9.sif"
 
 request_gpus   = 1
-request_memory = 10 Gb
+request_memory = 20 GB
 request_cpus   = 1
 
 # Don't forget to include training files in transfer_input_files above
+# Full set of outputs; 50M
 queue arguments from (
-   -m 0 -M 500 -o $(Cluster)_$(Process) -n 700 -l 2 -b 512 -e 5 -lr 1e-4 -lrr 0.2 -lrrp 20 -lrrt 1e-6 -wd 0 -aor 100 -orr 100
+   -o $(Cluster)_$(Process) -n 700 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 10 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 700 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 10 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 700 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 15 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 700 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 15 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 700 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 20 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 700 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 20 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 700 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 25 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 700 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 25 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 750 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 10 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 750 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 10 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 750 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 15 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 750 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 15 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 750 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 20 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 750 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 20 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 750 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 25 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 750 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 25 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 800 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 10 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 800 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 10 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 800 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 15 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 800 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 15 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 800 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 20 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 800 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 20 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 800 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 25 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 800 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 25 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 850 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 10 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 850 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 10 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 850 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 15 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 850 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 15 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 850 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 20 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 850 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 20 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 850 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 25 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 850 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 25 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 900 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 10 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 900 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 10 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 900 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 15 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 900 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 15 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 900 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 20 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 900 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 20 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 900 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 25 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 900 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 25 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 1000 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 10 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 1000 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 10 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 1000 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 15 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 1000 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 15 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 1000 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 20 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 1000 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 20 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 1000 -l 2 -b 512 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 25 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
+   -o $(Cluster)_$(Process) -n 1000 -l 2 -b 1024 -e 1000 -lr 1e-4 -lrr 0.2 -lrrp 25 -lrrt 1e-6 -wd 0 -aor 100 -orr 100 -mnout 0. -mxout 400.
 )
