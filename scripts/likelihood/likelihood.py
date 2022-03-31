@@ -73,48 +73,10 @@ parser.add_argument('-orr','--out-residual-resolution',
 args = parser.parse_args()
 
 # Load data sets
-<<<<<<< Updated upstream
 loaded_data = np.load('likelihood_data_processed.npz')
 use_it = (loaded_data['deltaNLL'] != 0)
 use_it[0] = True # Keep the first of the repeated entries
 outputs_all = loaded_data['deltaNLL'][use_it]
-=======
-loaded_data = np.load('/scratch365/klannon/dnnlikelihood/likelihood_data_no_delta.npz')
-deltaNLL = loaded_data['deltaNLL']-np.min(loaded_data['deltaNLL'])
-
-# Tune proportion of outputs over 50 vs under 50
-use_it_over = (deltaNLL >= 50) # Only keep the outputs > 50
-use_it_under = (deltaNLL < 50) 
-under_50_num = deltaNLL[use_it_under].size
-over_50_num = deltaNLL[use_it_over].size
-under_proportion = 1     # For now, these are set to use all the data as it is (without tweaks to proportion of over/under 50)
-over_proportion = 1
-index_under = np.random.choice(under_50_num, int(under_50_num*under_proportion), replace=False)
-index_over = np.random.choice(over_50_num, int(over_50_num*over_proportion), replace=False)
-
-# Load desired proportion of WC values
-cQei = np.concatenate((loaded_data['cQei'][index_under], loaded_data['cQei'][index_over]), axis=0)
-cQl3i = np.concatenate((loaded_data['cQl3i'][index_under], loaded_data['cQl3i'][index_over]), axis=0)
-cQlMi = np.concatenate((loaded_data['cQlMi'][index_under], loaded_data['cQlMi'][index_over]), axis=0)
-cbW = np.concatenate((loaded_data['cbW'][index_under], loaded_data['cbW'][index_over]), axis=0)
-cpQ3 = np.concatenate((loaded_data['cpQ3'][index_under], loaded_data['cpQ3'][index_over]), axis=0)
-cpQM = np.concatenate((loaded_data['cpQM'][index_under], loaded_data['cpQM'][index_over]), axis=0)
-cpt = np.concatenate((loaded_data['cpt'][index_under], loaded_data['cpt'][index_over]), axis=0)
-cptb = np.concatenate((loaded_data['cptb'][index_under], loaded_data['cptb'][index_over]), axis=0)
-ctG = np.concatenate((loaded_data['ctG'][index_under], loaded_data['ctG'][index_over]), axis=0)
-ctW = np.concatenate((loaded_data['ctW'][index_under], loaded_data['ctW'][index_over]), axis=0)
-ctZ = np.concatenate((loaded_data['ctZ'][index_under], loaded_data['ctZ'][index_over]), axis=0)
-ctei = np.concatenate((loaded_data['ctei'][index_under], loaded_data['ctei'][index_over]), axis=0)
-ctlSi = np.concatenate((loaded_data['ctlSi'][index_under], loaded_data['ctlSi'][index_over]), axis=0)
-ctlTi = np.concatenate((loaded_data['ctlTi'][index_under], loaded_data['ctlTi'][index_over]), axis=0)
-ctli = np.concatenate((loaded_data['ctli'][index_under], loaded_data['ctli'][index_over]), axis=0)
-ctp = np.concatenate((loaded_data['ctp'][index_under], loaded_data['ctp'][index_over]), axis=0)
-
-# Load desired proportion of outputs
-outputs_all = np.concatenate((deltaNLL[index_under], deltaNLL[index_over]), axis=0)
-
-# Store values in list
->>>>>>> Stashed changes
 inputs_all = []
 inputs_all.append(loaded_data['cQei'][use_it])
 inputs_all.append(loaded_data['cQl3i'][use_it])
