@@ -12,6 +12,8 @@ from pandas import read_csv
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib import colors as colors
 import argparse
+import polynomial as poly
+
 # Functions
 
 # Sets error calculations
@@ -77,7 +79,8 @@ def create_model(input_dim, output_dim, parameters):
     Inputs: input_dim (integer), output_dim (integer), parameters (dictionary)
     Outputs: model (Pytorch sequential container)
     """
-    layers = [torch.nn.Linear(input_dim,parameters['hidden_nodes']),torch.nn.ReLU()]
+    layers = [poly.PolynomialLayer(16,2,parameters['hidden_nodes']), torch.nn.ReLU()]
+#     layers = [torch.nn.Linear(input_dim,parameters['hidden_nodes']),torch.nn.ReLU()]
     for i in range(parameters['hidden_layers']):
         layers.append(torch.nn.Linear(parameters['hidden_nodes'],parameters['hidden_nodes']))
         layers.append(torch.nn.ReLU())
@@ -185,7 +188,9 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
         for minibatch in range(numMiniBatch):
             prediction = model(inputMiniBatches[minibatch])
             loss = lossFunc(prediction,outputMiniBatches[minibatch])
-            optimizer.zero_grad()
+            for param in model.parameters():
+                param.grad = None
+            #optimizer.zero_grad(set_to_none=True)
             loss.backward()
             optimizer.step()
         scheduler.step(test_std_loss_temp)
@@ -212,14 +217,17 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
     graph_data['test_outputs'] = test_outputs_np
 
     print ('Training done!')
-    #print ('--- %s seconds ---' % (time.perf_counter() - start_time))
+    print ('--- %s seconds ---' % (time.perf_counter() - start_time))
+    print('Best accuracy: ', best_accu, ', achieved in ', parameters_save['n_epochs'], 'epochs')
     return (graph_data, best_model_state, parameters_save)
 
 # New graph_data
 def new_graph_data(total_num, epochs):
     """
     Creates a new data dictionary for graphing later; The graphs are those pertaining to one run of one architecture only.
+
     Inputs: total_num (the total number of testing data points; integer), epochs (integer)
+
     Outputs: graph_data (dictionary)
     """
     graph_data = {}
@@ -244,7 +252,9 @@ def new_graph_data(total_num, epochs):
 def new_analysis_data():
     """
     Creates a new data dictionary to store the performance results of different networks.
+
     Inputs: None
+
     Outputs: analysis_data (dictionary)
     """
     analysis_data = {}
@@ -260,7 +270,9 @@ def new_analysis_data():
 def new_graphs():
     """
     Creates new graphs.
+
     Inputs: None
+
     Outputs: graphs (dictionary)
     """
     fig_time, ax_time = plt.subplots()
@@ -273,6 +285,7 @@ def new_graphs():
     fig_biases, ax_biases = plt.subplots()
 
     return {'fig_time': fig_time, 'ax_time': ax_time, 'fig_param': fig_param, 'ax_param': ax_param, 'fig_loss': fig_loss, 'ax_loss': ax_loss, 'fig_accu': fig_accu, 'ax_accu': ax_accu, 'fig_accu_out': fig_accu_out, 'ax_out_freq': ax_out_freq, 'ax_accu_out': ax_accu_out, 'fig_out_residual': fig_out_residual, 'ax_out_residual': ax_out_residual, 'fig_weights': fig_weights,'ax_weights': ax_weights,'fig_biases': fig_biases,'ax_biases': ax_biases,}
+
 
 # Do the graphing
 def graphing(graphs, graph_data, parameters):
@@ -335,7 +348,7 @@ def graphing(graphs, graph_data, parameters):
     graphs['ax_out_residual'].set_xlim(0,100)
     graphs['ax_out_residual'].set_ylim(-2,2)
     graphs['fig_out_residual'].tight_layout()
-    
+
     w1 = graphs['ax_weights'].boxplot(graph_data['weights'], vert = 0, whis = (5,95),showfliers=False)
     graphs['ax_weights'].set_xlabel('Weights')
     graphs['ax_weights'].title.set_text('Weights')
@@ -350,7 +363,9 @@ def graphing(graphs, graph_data, parameters):
 def show_graphs(graphs):
     """
     Shows the graphs.
+
     Inputs: graphs (dictionary)
+
     Outputs: None
     """
     graphs['fig_time']
@@ -366,7 +381,9 @@ def show_graphs(graphs):
 def save_graphs(graphs, name):
     """
     Saves the graphs to one pdf.
+
     Inputs: graphs (dictionary), name (string)
+
     Outputs: None
     """
     pp = PdfPages(name)
@@ -379,7 +396,7 @@ def save_graphs(graphs, name):
     pp.savefig(graphs['fig_weights'])
     pp.savefig(graphs['fig_biases'])
     pp.close()
-    
+
 # Analyze NN
 def analyze(param_list, trials, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, std_inputs_rep, std_outputs_rep):
     """

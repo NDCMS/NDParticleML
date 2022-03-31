@@ -15,14 +15,6 @@ import argparse
 
 # Store arguments
 parser = argparse.ArgumentParser(description='Train network.')
-parser.add_argument('-m','--min', 
-                    type=int,
-                    help='Minimum output to be included in the training set')
-                    
-parser.add_argument('-M','--max', 
-                    type=int,
-                    help='Maximum output to be included in the training set')
-
 parser.add_argument('-o','--out-file', 
                     help='Name of output file')
 
@@ -70,30 +62,69 @@ parser.add_argument('-orr','--out-residual-resolution',
                     type=int,
                     help='Resolution of the out residual graph')
 
+parser.add_argument('-mnout','--min-output',
+                    type=float,
+                    help='Minimum desired output range')
+
+parser.add_argument('-mxout','--max-output',
+                    type=float,
+                    help='Maximum desired output range')
+
 args = parser.parse_args()
 
 # Load data sets
-loaded_data = np.load('likelihood_data_processed.npz')
-use_it = (loaded_data['deltaNLL'] != 0)
-use_it[0] = True # Keep the first of the repeated entries
-outputs_all = loaded_data['deltaNLL'][use_it]
+loaded_data = np.load('/scratch365/snegash/scripts/likelihood/likelihood_data_no_delta.npz')
+deltaNLL = loaded_data['deltaNLL']-np.min(loaded_data['deltaNLL'])
+
+# Tune proportion of outputs over 50 vs under 50
+use_it_over = (deltaNLL >= 50) # Only keep the outputs > 50
+use_it_under = (deltaNLL < 50) 
+under_50_num = deltaNLL[use_it_under].size
+over_50_num = deltaNLL[use_it_over].size
+under_proportion = 1     # For now, these are set to use all the data as it is (without tweaks to proportion of over/under 50)
+over_proportion = 1
+index_under = np.random.choice(under_50_num, int(under_50_num*under_proportion), replace=False)
+index_over = np.random.choice(over_50_num, int(over_50_num*over_proportion), replace=False)
+
+# Load desired proportion of WC values
+cQei = np.concatenate((loaded_data['cQei'][index_under], loaded_data['cQei'][index_over]), axis=0)
+cQl3i = np.concatenate((loaded_data['cQl3i'][index_under], loaded_data['cQl3i'][index_over]), axis=0)
+cQlMi = np.concatenate((loaded_data['cQlMi'][index_under], loaded_data['cQlMi'][index_over]), axis=0)
+cbW = np.concatenate((loaded_data['cbW'][index_under], loaded_data['cbW'][index_over]), axis=0)
+cpQ3 = np.concatenate((loaded_data['cpQ3'][index_under], loaded_data['cpQ3'][index_over]), axis=0)
+cpQM = np.concatenate((loaded_data['cpQM'][index_under], loaded_data['cpQM'][index_over]), axis=0)
+cpt = np.concatenate((loaded_data['cpt'][index_under], loaded_data['cpt'][index_over]), axis=0)
+cptb = np.concatenate((loaded_data['cptb'][index_under], loaded_data['cptb'][index_over]), axis=0)
+ctG = np.concatenate((loaded_data['ctG'][index_under], loaded_data['ctG'][index_over]), axis=0)
+ctW = np.concatenate((loaded_data['ctW'][index_under], loaded_data['ctW'][index_over]), axis=0)
+ctZ = np.concatenate((loaded_data['ctZ'][index_under], loaded_data['ctZ'][index_over]), axis=0)
+ctei = np.concatenate((loaded_data['ctei'][index_under], loaded_data['ctei'][index_over]), axis=0)
+ctlSi = np.concatenate((loaded_data['ctlSi'][index_under], loaded_data['ctlSi'][index_over]), axis=0)
+ctlTi = np.concatenate((loaded_data['ctlTi'][index_under], loaded_data['ctlTi'][index_over]), axis=0)
+ctli = np.concatenate((loaded_data['ctli'][index_under], loaded_data['ctli'][index_over]), axis=0)
+ctp = np.concatenate((loaded_data['ctp'][index_under], loaded_data['ctp'][index_over]), axis=0)
+
+# Load desired proportion of outputs
+outputs_all = np.concatenate((deltaNLL[index_under], deltaNLL[index_over]), axis=0)
+
+# Store values in list
 inputs_all = []
-inputs_all.append(loaded_data['cQei'][use_it])
-inputs_all.append(loaded_data['cQl3i'][use_it])
-inputs_all.append(loaded_data['cQlMi'][use_it])
-inputs_all.append(loaded_data['cbW'][use_it])
-inputs_all.append(loaded_data['cpQ3'][use_it])
-inputs_all.append(loaded_data['cpQM'][use_it])
-inputs_all.append(loaded_data['cpt'][use_it])
-inputs_all.append(loaded_data['cptb'][use_it])
-inputs_all.append(loaded_data['ctG'][use_it])
-inputs_all.append(loaded_data['ctW'][use_it])
-inputs_all.append(loaded_data['ctZ'][use_it])
-inputs_all.append(loaded_data['ctei'][use_it])
-inputs_all.append(loaded_data['ctlSi'][use_it])
-inputs_all.append(loaded_data['ctlTi'][use_it])
-inputs_all.append(loaded_data['ctli'][use_it])
-inputs_all.append(loaded_data['ctp'][use_it])
+inputs_all.append(cQei)
+inputs_all.append(cQl3i)
+inputs_all.append(cQlMi)
+inputs_all.append(cbW)
+inputs_all.append(cpQ3)
+inputs_all.append(cpQM)
+inputs_all.append(cpt)
+inputs_all.append(cptb)
+inputs_all.append(ctG)
+inputs_all.append(ctW)
+inputs_all.append(ctZ)
+inputs_all.append(ctei)
+inputs_all.append(ctlSi)
+inputs_all.append(ctlTi)
+inputs_all.append(ctli)
+inputs_all.append(ctp)
 inputs_all = np.stack(inputs_all, axis=1)
 
 # Randomize
@@ -102,23 +133,31 @@ np.random.shuffle(all)
 inputs_all = all[:,:-1]
 outputs_all = all[:,-1]
 
+# # Take desired fraction of data (for memory purposes)
+# total_data = loaded_data['deltaNLL'].size
+# use_proportion = 0.16
+# index_data = np.random.choice(total_data, int(total_data*use_proportion), replace=False)
+# inputs_all = inputs_all[index_data]
+# outputs_all = outputs_all[index_data]
+
 # Add the squares of the variables and cross terms
 inputs_list = []
 inputs_list.append(inputs_all)
-inputs_all_squared = inputs_all ** 2
-inputs_list.append(inputs_all_squared)
-# Add the cross terms
-for i in range(16):
-    for j in range(i):
-        inputs_list.append(np.expand_dims(inputs_all[:,i] *  inputs_all[:,j], axis=1))
-inputs_all = np.concatenate(inputs_list, axis=1)
+# inputs_all_squared = inputs_all ** 2
+# inputs_list.append(inputs_all_squared)
 
-# Save only the points in the interval; don't forget to change the size of the network accordingly!
-lower = args.min
-upper = args.max
-idx = (outputs_all > lower) & (outputs_all < upper)
-outputs_all = outputs_all[idx]
-inputs_all = inputs_all[idx]
+# Add the cross terms
+# for i in range(16):
+#     for j in range(i):
+#         inputs_list.append(np.expand_dims(inputs_all[:,i] *  inputs_all[:,j], axis=1))
+# inputs_all = np.concatenate(inputs_list, axis=1)
+
+# Save only the points with output in given range
+min_out = args.min_output
+max_out = args.max_output
+use_range = (outputs_all >= min_out) & (outputs_all < max_out)
+outputs_all = outputs_all[use_range]
+inputs_all = inputs_all[use_range]
 
 # Prepare to split into training and validation sets
 total_data = outputs_all.shape[0]
