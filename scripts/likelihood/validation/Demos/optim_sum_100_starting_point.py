@@ -120,7 +120,7 @@ for key in name_list:
         #scheduler.step(output)
     (min_outputs_scanned, min_starting_point_indicies) = torch.min(min_outputs, -2) # Get the best all starting points
 
-    # Make the indix tensor suitable for gathering the min_WCs
+    # Make the index tensor suitable for gathering the min_WCs
     min_starting_point_indicies = min_starting_point_indicies.unsqueeze(-2)
     min_starting_point_indicies_shape = list(min_starting_point_indicies.shape)
     min_starting_point_indicies_shape[-1] = 16
