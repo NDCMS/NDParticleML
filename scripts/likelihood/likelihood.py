@@ -178,7 +178,7 @@ test_outputs = torch.unsqueeze(torch.from_numpy(test_outputs).cuda(), 1)
 
 # Hyperparameters
 parameters = {}
-parameters['N'] = inputs.shape[1]
+parameters['N'] = inputs.shape[1] # The number of variables
 parameters['train_size'] = inputs.shape[0]
 parameters['test_size'] = test_inputs.shape[0]
 parameters['hidden_nodes'] = args.nodes
