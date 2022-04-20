@@ -190,7 +190,7 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
             loss = lossFunc(prediction,outputMiniBatches[minibatch])
             for param in model.parameters():
                 param.grad = None
-            #optimizer.zero_grad(set_to_none=True)
+            #optimizer.zero_grad(set_to_none=True) # This is slower than the above by experiment.
             loss.backward()
             optimizer.step()
         scheduler.step(test_std_loss_temp)
