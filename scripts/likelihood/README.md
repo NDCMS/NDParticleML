@@ -1,0 +1,13 @@
+To produce the model 6755_13, the following hyperparameters were used:
+- Training size: 49378587
+- Validation size: 498773
+- Nodes: 750
+- Layers: 2
+- Minibatch Size: 1024
+- Epochs: 1000
+- Initial Learning Rate: 0.000100
+- Learning Rate Reduction Factor: 0.200000
+- Learning Rate Reduction Patience: 20
+- Learning Rate Reduction Threshold: 0.000001
+- Weight Decay: 0.000000
+- Training file: likelihood_data_no_delta.npz
