@@ -76,10 +76,10 @@ v_accu_test = np.vectorize(accu_test) # This makes a vector function for conveni
 def create_model(input_dim, output_dim, parameters):
     """
     Creates a sequential model with the same number of nodes in each hidden layer.
-    Inputs: input_dim (integer), output_dim (integer), parameters (dictionary)
+    Inputs: input_dim (integer, the number of variables), output_dim (integer), parameters (dictionary)
     Outputs: model (Pytorch sequential container)
     """
-    layers = [poly.PolynomialLayer(16,2,parameters['hidden_nodes']), torch.nn.ReLU()]
+    layers = [poly.PolynomialLayer(input_dim,2,parameters['hidden_nodes']), torch.nn.ReLU()] # 2 is hardcoded because we're calcualting the squares and cross terms, which are 2nd degree
 #     layers = [torch.nn.Linear(input_dim,parameters['hidden_nodes']),torch.nn.ReLU()]
     for i in range(parameters['hidden_layers']):
         layers.append(torch.nn.Linear(parameters['hidden_nodes'],parameters['hidden_nodes']))
@@ -190,7 +190,7 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
             loss = lossFunc(prediction,outputMiniBatches[minibatch])
             for param in model.parameters():
                 param.grad = None
-            #optimizer.zero_grad(set_to_none=True)
+            #optimizer.zero_grad(set_to_none=True) # This is slower than the above by experiment.
             loss.backward()
             optimizer.step()
         scheduler.step(test_std_loss_temp)
@@ -398,6 +398,7 @@ def save_graphs(graphs, name):
     pp.close()
 
 # Analyze NN
+# TEST THIS
 def analyze(param_list, trials, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, std_inputs_rep, std_outputs_rep):
     """
     Tests networks with given hyperparameters.
@@ -417,6 +418,7 @@ def analyze(param_list, trials, std_inputs, std_outputs, std_test_inputs, std_te
     return analysis_data
 
 # New analysis graphs (figs, axes, etc.)
+# TEST THIS
 def new_analysis_graphs():
     """
     Creates new analysis graphs.
@@ -428,6 +430,7 @@ def new_analysis_graphs():
     return {'fig_analysis': fig_analysis, 'ax_analysis': ax_analysis}
 
 # Graph the data from NN analysis
+# TEST THIS
 def analysis_graphing(analysis_graphs, analysis_data, param_list, trials):
     """
     Does the analysis graphing.
