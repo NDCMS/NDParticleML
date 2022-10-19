@@ -73,14 +73,16 @@ def accu_test(prediction, actual):
 v_accu_test = np.vectorize(accu_test) # This makes a vector function for convenience
 
 # Create a simple neural network with layer and node variabliltiy
-def create_model(input_dim, output_dim, parameters):
+def create_model(input_dim, output_dim, parameters, polynomial):
     """
     Creates a sequential model with the same number of nodes in each hidden layer.
     Inputs: input_dim (integer, the number of variables), output_dim (integer), parameters (dictionary)
     Outputs: model (Pytorch sequential container)
     """
-    layers = [poly.PolynomialLayer(input_dim,2,parameters['hidden_nodes']), torch.nn.ReLU()] # 2 is hardcoded because we're calcualting the squares and cross terms, which are 2nd degree
-#     layers = [torch.nn.Linear(input_dim,parameters['hidden_nodes']),torch.nn.ReLU()]
+    if (polynomial):
+        layers = [poly.PolynomialLayer(input_dim,2,parameters['hidden_nodes']), torch.nn.ReLU()] # 2 is hardcoded because we're calcualting the squares and cross terms, which are 2nd degree
+    else:
+        layers = [torch.nn.Linear(input_dim,parameters['hidden_nodes']),torch.nn.ReLU()]
     for i in range(parameters['hidden_layers']):
         layers.append(torch.nn.Linear(parameters['hidden_nodes'],parameters['hidden_nodes']))
         layers.append(torch.nn.ReLU())
