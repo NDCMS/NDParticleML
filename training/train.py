@@ -74,7 +74,9 @@ args = parser.parse_args()
 
 # Load data sets
 loaded_data = np.load('/scratch365/klannon/dnnlikelihood/likelihood_data_no_delta.npz')
-deltaNLL = loaded_data['deltaNLL']-np.min(loaded_data['deltaNLL'])
+deltaNLL = loaded_data['deltaNLL']-np.min(loaded_data['deltaNLL']) # Necessary, because min is around -18
+
+# No need to remove duplicate global minima, since that's no longer an issue in this data set
 
 # Tune proportion of outputs over 50 vs under 50
 use_it_over = (deltaNLL >= 50) # Only keep the outputs > 50
@@ -139,18 +141,6 @@ outputs_all = all[:,-1]
 # index_data = np.random.choice(total_data, int(total_data*use_proportion), replace=False)
 # inputs_all = inputs_all[index_data]
 # outputs_all = outputs_all[index_data]
-
-# Add the squares of the variables and cross terms
-inputs_list = []
-inputs_list.append(inputs_all)
-# inputs_all_squared = inputs_all ** 2
-# inputs_list.append(inputs_all_squared)
-
-# Add the cross terms
-# for i in range(16):
-#     for j in range(i):
-#         inputs_list.append(np.expand_dims(inputs_all[:,i] *  inputs_all[:,j], axis=1))
-# inputs_all = np.concatenate(inputs_list, axis=1)
 
 # Save only the points with output in given range
 min_out = args.min_output
