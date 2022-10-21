@@ -86,7 +86,7 @@ Via Jupyter Notebook:
 
 Above was the state of the project at the end of summer 2021. Since then, a lot has happened, but the basic structure remains the same. Go into the `training` and `validation` folders to learn more about how to execute newer code. `archive` is a self-contained folder with everything needed to reproduce the project at the end of summer 2021. Outside of `archive`, everything is in active development.
 
-Here is a brief summary of each folder:
+Here is a brief overview of each folder:
 - `demos`: Minimal runnable code that captures essential ideas
 - `models`: Files that contain trained NNs, possibly along with validation graphs
 - `modules`: Python modules that need to be imported for every code run in this repository
