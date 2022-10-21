@@ -31,7 +31,7 @@ The workflow consists of three steps: training, validation, and analysis. Traini
 - Products
     - TBD
 
----
+<br/>
 
 ## Getting Started
 
@@ -80,7 +80,7 @@ Via Jupyter Notebook:
 - Run `Validation.ipynb`
 - Graphs should be saved to the same directory
 
----
+<br/>
 
 ## Going Beyond Old Code
 

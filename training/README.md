@@ -1,13 +1,3 @@
-To produce the model 6755_13, the following hyperparameters were used:
-- Training size: 49378587
-- Validation size: 498773
-- Nodes: 750
-- Layers: 2
-- Minibatch Size: 1024
-- Epochs: 1000
-- Initial Learning Rate: 0.000100
-- Learning Rate Reduction Factor: 0.200000
-- Learning Rate Reduction Patience: 20
-- Learning Rate Reduction Threshold: 0.000001
-- Weight Decay: 0.000000
-- Training file: likelihood_data_no_delta.npz
+# Training
+
+This folder contains current NN training code. Make sure to include all files to be transferred in `train.submit`! Also, check the graph and model saving lines in `train.py` if you want to convert it to a notebook or vice versa, otherwise they might not save correctly.
