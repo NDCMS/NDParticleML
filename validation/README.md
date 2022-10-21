@@ -7,3 +7,5 @@ This folder contains current NN validation code.
 - `validation_2d_profiling.ipynb`: 2D validation with self-consistent profiling. The same as `2d_profiling.py`, just in a notebook.
 
 There is currently no script to do 1D validation with self-consistent profiling, although it is easy to create by adapting that in v1.
+
+Note: The current `Combine` scan data is in `/tmpscratch/sliu24/demos/`.
