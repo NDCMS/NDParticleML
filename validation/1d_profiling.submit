@@ -1,0 +1,24 @@
+universe = vanilla
+executable = 1d_profiling.sh
+
+Log    = ./logs/$(Cluster)_$(Process).log
+Output = ./logs/$(Cluster)_$(Process).out
+Error  = ./logs/$(Cluster)_$(Process).err
+
+should_transfer_files = YES
+transfer_input_files = 1d_profiling.py, nn_module.py, polynomial.py, 12643_0_model+.pt, likelihood_cQei.npz, likelihood_cQl3i.npz, likelihood_cQlMi.npz, likelihood_cbW.npz, likelihood_cpQ3.npz, likelihood_cpQM.npz, likelihood_cpt.npz, likelihood_cptb.npz, likelihood_ctG.npz, likelihood_ctW.npz, likelihood_ctZ.npz, likelihood_ctei.npz, likelihood_ctlSi.npz, likelihood_ctlTi.npz, likelihood_ctli.npz, likelihood_ctp.npz, likelihood_profiled_cQei.npz, likelihood_profiled_cQl3i.npz, likelihood_profiled_cQlMi.npz, likelihood_profiled_cbW.npz, likelihood_profiled_cpQ3.npz, likelihood_profiled_cpQM.npz, likelihood_profiled_cpt.npz, likelihood_profiled_cptb.npz, likelihood_profiled_ctG.npz, likelihood_profiled_ctW.npz, likelihood_profiled_ctZ.npz, likelihood_profiled_ctei.npz, likelihood_profiled_ctlSi.npz, likelihood_profiled_ctlTi.npz, likelihood_profiled_ctli.npz, likelihood_profiled_ctp.npz
+when_to_transfer_output = ON_EXIT
+# Must specify to transfer entire directories
+transfer_output_files = graphs
+
+# Enable Singularity feature
+## Notre Dame Images
+# doesn't give latest Pytorch: +SingularityImage = "/cvmfs/singularity.opensciencegrid.org/notredamedulac/el7-pytorch-gpu:latest"
++SingularityImage = "/afs/crc.nd.edu/x86_64_linux/s/singularity/images/pytorch-1.9.sif"
+
+request_gpus   = 1
+request_memory = 10 Gb
+request_cpus   = 1
+
+# Don't forget to include training files in transfer_input_files above
+queue 1

@@ -6,7 +6,7 @@ Output = ./logs/$(Cluster)_$(Process).out
 Error  = ./logs/$(Cluster)_$(Process).err
 
 should_transfer_files = YES
-transfer_input_files = 2d_profiling.py, NN_Module_Poly.py, polynomial.py, 6755_13_model+.pt, likelihood_cpQ3_cbW.npz, likelihood_cpQM_ctG.npz, likelihood_cpt_ctp.npz, likelihood_cptb_cQl3i.npz, likelihood_cQei_cQlMi.npz, likelihood_ctei_ctlTi.npz, likelihood_ctli_ctlSi.npz, likelihood_ctW_ctZ.npz, likelihood_profiled_cpQ3_cbW.npz, likelihood_profiled_cpQM_ctG.npz, likelihood_profiled_cpt_ctp.npz, likelihood_profiled_cptb_cQl3i.npz, likelihood_profiled_cQei_cQlMi.npz, likelihood_profiled_ctei_ctlTi.npz, likelihood_profiled_ctli_ctlSi.npz, likelihood_profiled_ctW_ctZ.npz
+transfer_input_files = 2d_profiling.py, nn_module.py, polynomial.py, 12643_0_model+.pt, likelihood_cpQ3_cbW.npz, likelihood_cpQM_ctG.npz, likelihood_cpt_ctp.npz, likelihood_cptb_cQl3i.npz, likelihood_cQei_cQlMi.npz, likelihood_ctei_ctlTi.npz, likelihood_ctli_ctlSi.npz, likelihood_ctW_ctZ.npz, likelihood_profiled_cpQ3_cbW.npz, likelihood_profiled_cpQM_ctG.npz, likelihood_profiled_cpt_ctp.npz, likelihood_profiled_cptb_cQl3i.npz, likelihood_profiled_cQei_cQlMi.npz, likelihood_profiled_ctei_ctlTi.npz, likelihood_profiled_ctli_ctlSi.npz, likelihood_profiled_ctW_ctZ.npz
 when_to_transfer_output = ON_EXIT
 # Must specify to transfer entire directories
 transfer_output_files = graphs
