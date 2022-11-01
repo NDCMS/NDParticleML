@@ -6,6 +6,7 @@ This folder contains current NN validation code.
 - `validation_2d.ipynb`: 2D validation without self-consistent profiling.
 - `validation_2d_profiling.ipynb`: 2D validation with self-consistent profiling. The same as `2d_profiling.py`, just in a notebook.
 - `comparison_plots`: compares 1D validation accuracy between two given models
+- `graphs/`: folder that holds all of the graphs
 
 There is currently no script to do 1D validation with self-consistent profiling, although it is easy to create by adapting that in v1.
 
