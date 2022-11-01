@@ -1,4 +1,4 @@
-#Graphs
+# Graphs
 
 This folder contians all of the saved data for the validation graphs and comparison plots.
 - `MODELNUMBER_validation.pdf` contains the validation plots
