@@ -1,4 +1,4 @@
-import NN_Module_Poly as nnm
+import nn_module as nnm
 import torch
 import numpy as np
 import numpy.ma as ma
@@ -49,7 +49,7 @@ def evaluate(inputs, model, input_stats, output_stats):
 
     return outputs
 
-out_file = '6755_13'
+out_file = '12643_0'
 
 names = {}
 names['cQei'] = 0
@@ -147,8 +147,9 @@ for num in nums:
     model_profiled_2D_data[str(num)] = {WC_to_analyze_1[num]: inputs_old[..., 0, names[WC_to_analyze_1[num]]], WC_to_analyze_2[num]: inputs_old[..., 0, names[WC_to_analyze_2[num]]]}
     print (model_profiled_2D_data[str(num)][WC_to_analyze_2[num]])
     inputs = (np.random.random_sample(inputs_old.shape) - 0.5) * 40
-    inputs[...,names[WC_to_analyze_1[num]]] = inputs_old[...,names[WC_to_analyze_1[num]]] # copy over the WC being scanned, while leaving the other 15 randomized
-    inputs[...,names[WC_to_analyze_2[num]]] = inputs_old[...,names[WC_to_analyze_2[num]]] # copy over the WC being scanned, while leaving the other 15 randomized
+    # copy over the WCs being scanned, while leaving the other 14 randomized
+    inputs[...,names[WC_to_analyze_1[num]]] = inputs_old[...,names[WC_to_analyze_1[num]]] 
+    inputs[...,names[WC_to_analyze_2[num]]] = inputs_old[...,names[WC_to_analyze_2[num]]]
     inputs = torch.from_numpy(inputs).float().cuda()
     inputs.requires_grad = True
 
