@@ -70,6 +70,14 @@ parser.add_argument('-mxout','--max-output',
                     type=float,
                     help='Maximum desired output range')
 
+parser.add_argument('-poly','--polynomial',
+                    type=bool,
+                    help='Include polynomial layer')
+
+parser.add_argument('-pd','--polynomial_degree',
+                    type=int,
+                    help='Degree of polynomial layer')
+
 args = parser.parse_args()
 
 # Load data sets
@@ -180,6 +188,8 @@ parameters['lr_red_factor'] = args.learning_rate_reduction
 parameters['lr_red_patience'] = args.learning_rate_patience
 parameters['lr_red_threshold'] = args.learning_rate_threshold
 parameters['weight_decay'] = args.weight_decay
+parameters['polynomial'] = args.polynomial
+parameters['polynomial_degree'] = args.polynomial_degree
 
 # Graphing parameters
 parameters['accu_out_resolution'] = args.accu_out_resolution

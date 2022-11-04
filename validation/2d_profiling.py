@@ -76,7 +76,7 @@ batch_size = 4096
 epochs = 100
 random_starting_points = 50 # The number of random starting points to do gradient descent on for each scanned value
 
-save_dict = torch.load(f'./{out_file}_model+.pt')
+save_dict = torch.load(f'../models/{out_file}/{out_file}_model+.pt')
 best_model_state = save_dict['model']
 parameters_save = save_dict['parameters']
 input_stats = save_dict['input_stats']

@@ -79,8 +79,11 @@ def create_model(input_dim, output_dim, parameters):
     Inputs: input_dim (integer, the number of variables), output_dim (integer), parameters (dictionary)
     Outputs: model (Pytorch sequential container)
     """
-    layers = [poly.PolynomialLayer(input_dim,2,parameters['hidden_nodes']), torch.nn.ReLU()] # 2 is hardcoded because we're calcualting the squares and cross terms, which are 2nd degree
-#     layers = [torch.nn.Linear(input_dim,parameters['hidden_nodes']),torch.nn.ReLU()]
+    #Checks if this model will have polynomial layer. If so, then it makes one based on the given degrees.
+    if (parameters['polynomial']):
+        layers = [poly.PolynomialLayer(input_dim,parameters['polynomial_degree'],parameters['hidden_nodes']), torch.nn.ReLU()]
+    else:
+        layers = [torch.nn.Linear(input_dim,parameters['hidden_nodes']),torch.nn.ReLU()]
     for i in range(parameters['hidden_layers']):
         layers.append(torch.nn.Linear(parameters['hidden_nodes'],parameters['hidden_nodes']))
         layers.append(torch.nn.ReLU())
@@ -127,6 +130,9 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
     inputMiniBatches = torch.split(std_inputs, parameters['batch_size'])
     outputMiniBatches = torch.split(std_outputs, parameters['batch_size'])
     numMiniBatch = len(inputMiniBatches)
+    
+    testingMiniBatches = torch.split(std_test_inputs, parameters['batch_size'])
+    numMiniBatchTest = len(testingMiniBatches)
 
     # Set up the training functions
     lossFunc = torch.nn.MSELoss()
@@ -141,22 +147,42 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
         # Everything that needs to be done every epoch
         with torch.no_grad():
             model.eval()
+            
             # Data for the accuracy curve
-            test_final_prediction_temp = affine_untransform(model(std_test_inputs), output_stats)
-            score_temp = v_accu_test(test_final_prediction_temp.cpu().detach().numpy().flatten(), test_outputs_np)
+            test_final_prediction_temp = torch.tensor([]).cuda()
+            train_std_prediction_temp = torch.tensor([]).cuda()
+            test_std_prediction_temp = torch.tensor([]).cuda()
+ 
+            #Baches to minibatch the testing data
+            idx = torch.randperm(torch.numel(std_test_outputs)) 
+            inputMiniBatchesTest = torch.split(std_test_inputs[idx], parameters['batch_size'])
+            inputMiniBatchesRep = torch.split(std_inputs_rep[idx], parameters['batch_size'])
+
+            #Puts the testing output data in the same order as the new minibatches input data
+            test_outputs_np_batched = test_outputs_np[idx]
+            std_outputs_rep_batched = std_outputs_rep[idx]
+            std_test_outputs_batched = std_test_outputs[idx]
+           
+            for minibatch in range(numMiniBatchTest):
+                #Generates the model's prediction of the testing data
+                test_final_prediction_temp = torch.cat((test_final_prediction_temp,affine_untransform(model(inputMiniBatchesTest[minibatch]), output_stats)),axis=0)
+
+                # Data for the other plots
+                train_std_prediction_temp = torch.cat((train_std_prediction_temp, model(inputMiniBatchesRep[minibatch])),axis=0) 
+                test_std_prediction_temp = torch.cat((test_std_prediction_temp, model(inputMiniBatchesTest[minibatch])),axis=0)
+            
+            #These starts putting the caculcated data into their respective graphing groups                
+            score_temp = v_accu_test(test_final_prediction_temp.cpu().detach().numpy().flatten(), test_outputs_np_batched)
             accu_temp = np.sum(score_temp) / total_num
-            graph_data['accu_vals'][epoch] = accu_temp
-            graph_data['accu_epochs'][epoch] = epoch
+            graph_data['accu_vals'][epoch] = accu_temp 
+            graph_data['accu_epochs'][epoch] = epoch 
 
             # Data for accu_out
             np.add.at(grid_accu_tally, (grid_num, epoch, 0), score_temp)
             np.add.at(grid_accu_tally, (grid_num, epoch, 1), 1)
 
-            # Data for the other plots
-            train_std_prediction_temp = model(std_inputs_rep) # We only find the loss on a representative sample of the data, with the size equal to that of the testing set, to save memory
-            train_std_loss_temp = lossFunc(train_std_prediction_temp, std_outputs_rep).item()
-            test_std_prediction_temp = model(std_test_inputs)
-            test_std_loss_temp = lossFunc(test_std_prediction_temp, std_test_outputs).item()
+            train_std_loss_temp = lossFunc(train_std_prediction_temp, std_outputs_rep_batched).item()
+            test_std_loss_temp = lossFunc(test_std_prediction_temp, std_test_outputs_batched).item() 
             graph_data['train_loss_vals'][epoch] = train_std_loss_temp
             graph_data['train_loss_epochs'][epoch] = epoch
             graph_data['test_loss_vals'][epoch] = test_std_loss_temp
@@ -197,9 +223,19 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
     
     # Data for the residual plots
     model.eval()
-    test_final_prediction_temp = affine_untransform(model(std_test_inputs), output_stats)
-    residual = test_outputs - test_final_prediction_temp
-    graph_data['out_residual_vals'] = residual.cpu().detach().numpy().flatten()
+    
+    with torch.no_grad():
+        #Minibatching the last test data calculation
+        test_final_prediction_temp_final = torch.tensor([]).cuda()
+
+        idx = torch.randperm(torch.numel(std_test_outputs))
+        inputMiniBatchesTest = torch.split(std_test_inputs[idx], parameters['batch_size'])
+        test_outputs_batched = test_outputs[idx]
+
+        for minibatch in range(numMiniBatchTest):
+            test_final_prediction_temp_final = torch.cat((test_final_prediction_temp_final, affine_untransform(model(inputMiniBatchesTest[minibatch]), output_stats)), axis=0)
+        residual = test_outputs_batched - test_final_prediction_temp_final #The numerical error of the current prediction for each test.
+        graph_data['out_residual_vals'] = residual.cpu().detach().numpy().flatten()
     
     # Data for the weights and biases histograms
     model_param  = model.state_dict()
