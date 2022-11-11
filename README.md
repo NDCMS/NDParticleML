@@ -93,3 +93,9 @@ Here is a brief overview of each folder:
 - `tools`: Handy scripts for a variety of tasks of tangential importance to the project
 - `training`: Code for training NNs
 - `validation`: Code for validating NNs
+
+<br/>
+
+## TODOs
+
+- Make sure all validation codes are compatible with the changes associated with compare_plots.
