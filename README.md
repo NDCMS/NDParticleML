@@ -94,6 +94,9 @@ Here is a brief overview of each folder:
 - `training`: Code for training NNs
 - `validation`: Code for validating NNs
 
+Additional Notes:
+- Folders named `nb_code` contain the raw code of the Jupyter notebooks in the same directory. This is to keep track of meaningful changes in the notebooks. Therefore, please update the raw code every time a notebook is modified by saving the notebook as a `.py` file.
+
 <br/>
 
 ## TODOs

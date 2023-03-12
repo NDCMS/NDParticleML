@@ -6,8 +6,8 @@ This folder contains current NN validation code.
 - `validation.ipynb`: 1D validation without self-consistent profiling. This means the profiled scans merely evaluate the NN at the same points in 16D space as the `Combine` scans.
 - `validation_2d.ipynb`: 2D validation without self-consistent profiling.
 - `validation_2d_profiling.ipynb`: 2D validation with self-consistent profiling. The same as `2d_profiling.py`, just in a notebook.
-- `comparison_graphs`: Compares 1D validation without self-consistent profiling accuracy of two models.
-- `graphs\`: Stores the graphs for the validation.
+- `comparison_plots.ipynb`: Compares 1D validation without self-consistent profiling accuracy of two models.
+- `graphs`: Stores the graphs for the validation.
 
 There is currently no script to do 1D validation with self-consistent profiling, although it is easy to create by adapting that in v1.
 
