@@ -102,3 +102,5 @@ Additional Notes:
 ## TODOs
 
 - Make sure all validation codes are compatible with the changes associated with compare_plots.
+- Use early stopping for training.
+- See #TODOs scattered around the code.

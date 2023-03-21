@@ -1,5 +1,6 @@
 # %matplotlib notebook
 import torch
+from torch import nn
 import numpy as np
 import numpy.ma as ma
 from mpl_toolkits import mplot3d
@@ -33,6 +34,7 @@ def rel_err(pred, act):
     if act == 0: return 9e+10
     return abs(abs_err(pred, act)/act)
 
+# Deprecated. Use LinearLayer instead.
 def affine_transform(tensor, stats):
     """
     Subtracts mean and divides by standard deviation.
@@ -41,6 +43,7 @@ def affine_transform(tensor, stats):
     """
     return (tensor - stats[0]) / stats[1]
 
+# Deprecated. Use LinearLayer instead.
 def affine_untransform(tensor, stats):
     """
     Inverse function of affine_transform. Multiplies by stddev and adds mean.
@@ -73,49 +76,65 @@ def accu_test(prediction, actual):
 v_accu_test = np.vectorize(accu_test) # This makes a vector function for convenience
 
 # Create a simple neural network with layer and node variabliltiy
-def create_model(input_dim, output_dim, parameters):
+def create_model(input_dim, output_dim, parameters, input_stats, output_stats, lin_trans = None):
     """
-    Creates a sequential model with the same number of nodes in each hidden layer.
-    Inputs: input_dim (integer, the number of variables), output_dim (integer), parameters (dictionary)
+    Creates a sequential model with the same number of nodes in each hidden layer. Adds a linear transformation of inputs in the front and sandwiches the other layers between standardization layers.
+
+    linear (fixed) -> standardization (fixed) -> hidden layers -> unstandardization
+
+    Inputs: input_dim (integer, the number of variables), output_dim (integer), parameters (dictionary), input_stats (mean, standard deviation) (tuple), output_stats (mean, standard deviation) (tuple), lin_trans (tensor)
     Outputs: model (Pytorch sequential container)
     """
+    layers = []
+    if (lin_trans is None):
+        # Add an identity matrix layer so that the saved model will have the correct layer 
+        # numbers even if we add a nontrivial linear layer later
+        layers.append(LinearLayer(torch.eye(input_dim), torch.zeros(input_dim).cuda()))
+    else:
+        layers.append(LinearLayer(lin_trans, torch.zeros(input_dim).cuda()))
+    layers.append(LinearLayer(torch.diag(1/input_stats[1]), -input_stats[0]/input_stats[1]))
     #Checks if this model will have polynomial layer. If so, then it makes one based on the given degrees.
     if (parameters['polynomial']):
-        layers = [poly.PolynomialLayer(input_dim,parameters['polynomial_degree'],parameters['hidden_nodes']), torch.nn.ReLU()]
+        layers += [poly.PolynomialLayer(input_dim,parameters['polynomial_degree'],parameters['hidden_nodes']), torch.nn.ReLU()]
     else:
-        layers = [torch.nn.Linear(input_dim,parameters['hidden_nodes']),torch.nn.ReLU()]
+        layers += [torch.nn.Linear(input_dim,parameters['hidden_nodes']),torch.nn.ReLU()]
     for i in range(parameters['hidden_layers']):
         layers.append(torch.nn.Linear(parameters['hidden_nodes'],parameters['hidden_nodes']))
         layers.append(torch.nn.ReLU())
     layers.append(torch.nn.Linear(parameters['hidden_nodes'],output_dim)) # We only care about functions with one output
+    layers.append(LinearLayer(torch.diag(output_stats[1]), output_stats[0]))
     model = torch.nn.Sequential(*layers)
     # include different number of nodes per layer functionality
     #list with nodes per layer
     return model.cuda()
 
 # Train network
-def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, std_inputs_rep, std_outputs_rep, parameters, show_progress = True):
+def train_network(model, inputs_train, outputs_train, inputs_test, outputs_test, parameters, show_progress = True):
     """
     Trains a network of a given architecture.
-    Inputs: model (Pytorch sequential container), hidden_nodes (the number of nodes in each hidden layer (the same for all layers); integer), hidden_layers (integer), std_inputs (standardized training input data; Pytorch tensor), std_outputs (standardized training output data; Pytorch tensor), std_test_inputs (standardized testing input data; Pytorch tensor), std_test_outputs (standardized testing output data; Pytorch tensor), output_stats (mean, standard deviation) (tuple), std_inputs_rep (representative inputs; Pytorch tensor), std_outputs_rep (representative outputs; Pytorch tensor), parameters (dictionary), show_progress (boolean)
-    Outputs: graph_data (dictionary)
+    Inputs: model (Pytorch sequential container), inputs_train (training input data; Pytorch tensor), outputs_train (training output data; Pytorch tensor), inputs_test (testing input data; Pytorch tensor), outputs_test (testing output data; Pytorch tensor), parameters (dictionary), show_progress (boolean)
+    Outputs: (graph_data, best_model_state, parameters_save): tuple (dictionary, state dictionary, dictionary)
     """
     # Useful information
-    total_num = torch.numel(std_test_outputs)
-    N = std_inputs.shape[1]
-    test_outputs = affine_untransform(std_test_outputs, output_stats)
-    test_outputs_np = test_outputs.cpu().detach().numpy().flatten()
-    test_size = test_outputs_np.size
+    total_num = torch.numel(outputs_test)
+    N = inputs_train.shape[1]
+    outputs_test_np = outputs_test.cpu().detach().numpy().flatten()
+    test_size = outputs_test_np.size
+
+    # Create a representative training set for evaluation
+    index_std_train_rep = np.random.choice(parameters['train_size'], parameters['test_size'], replace=False)
+    inputs_train_rep = inputs_train[index_std_train_rep]
+    outputs_train_rep = outputs_train[index_std_train_rep]
 
     # Useful info for accu_out graph
     # Calculate accuracy for each region
-    max_out = test_outputs_np.max()
-    min_out = test_outputs_np.min()
+    max_out = outputs_test_np.max()
+    min_out = outputs_test_np.min()
     max_graph = max_out + (max_out - min_out) / 100
     min_graph = min_out - (max_out - min_out) / 100
     grid_size = (max_graph - min_graph) / parameters['accu_out_resolution']
     grid_accu_tally = np.zeros((parameters['accu_out_resolution'], parameters['n_epochs'], 2))
-    grid_num = np.floor((test_outputs_np - min_graph) / grid_size).astype(np.int)
+    grid_num = np.floor((outputs_test_np - min_graph) / grid_size).astype(np.int)
 
     # Initialize things to save
     parameters_save = parameters.copy()
@@ -127,11 +146,11 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
     model.train()
 
     # Break the list up into smaller batches for more efficient training
-    inputMiniBatches = torch.split(std_inputs, parameters['batch_size'])
-    outputMiniBatches = torch.split(std_outputs, parameters['batch_size'])
+    inputMiniBatches = torch.split(inputs_train, parameters['batch_size'])
+    outputMiniBatches = torch.split(outputs_train, parameters['batch_size'])
     numMiniBatch = len(inputMiniBatches)
     
-    testingMiniBatches = torch.split(std_test_inputs, parameters['batch_size'])
+    testingMiniBatches = torch.split(inputs_test, parameters['batch_size'])
     numMiniBatchTest = len(testingMiniBatches)
 
     # Set up the training functions
@@ -140,7 +159,7 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=parameters['lr_red_factor'], patience=parameters['lr_red_patience'], threshold=parameters['lr_red_threshold'])
 
     # Initialize graph data
-    graph_data = new_graph_data(total_num, parameters['n_epochs'])
+    graph_data = new_graph_data(parameters['n_epochs'])
 
     # Actually train
     for epoch in range(parameters['n_epochs']):
@@ -149,30 +168,28 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
             model.eval()
             
             # Data for the accuracy curve
-            test_final_prediction_temp = torch.tensor([]).cuda()
-            train_std_prediction_temp = torch.tensor([]).cuda()
-            test_std_prediction_temp = torch.tensor([]).cuda()
+            test_prediction_temp = torch.tensor([]).cuda()
+            train_prediction_temp = torch.tensor([]).cuda()
  
             #Baches to minibatch the testing data
-            idx = torch.randperm(torch.numel(std_test_outputs)) 
-            inputMiniBatchesTest = torch.split(std_test_inputs[idx], parameters['batch_size'])
-            inputMiniBatchesRep = torch.split(std_inputs_rep[idx], parameters['batch_size'])
+            idx = torch.randperm(torch.numel(outputs_test)) 
+            inputMiniBatchesTest = torch.split(inputs_test[idx], parameters['batch_size'])
+            inputMiniBatchesRep = torch.split(inputs_train_rep[idx], parameters['batch_size']) # Only works because picked representative training set to be of the same size as the testing set
 
             #Puts the testing output data in the same order as the new minibatches input data
-            test_outputs_np_batched = test_outputs_np[idx]
-            std_outputs_rep_batched = std_outputs_rep[idx]
-            std_test_outputs_batched = std_test_outputs[idx]
+            outputs_test_np_batched = outputs_test_np[idx]
+            outputs_train_rep_batched = outputs_train_rep[idx]
+            outputs_test_batched = outputs_test[idx]
            
             for minibatch in range(numMiniBatchTest):
                 #Generates the model's prediction of the testing data
-                test_final_prediction_temp = torch.cat((test_final_prediction_temp,affine_untransform(model(inputMiniBatchesTest[minibatch]), output_stats)),axis=0)
+                test_prediction_temp = torch.cat((test_prediction_temp, model(inputMiniBatchesTest[minibatch])),axis=0)
 
                 # Data for the other plots
-                train_std_prediction_temp = torch.cat((train_std_prediction_temp, model(inputMiniBatchesRep[minibatch])),axis=0) 
-                test_std_prediction_temp = torch.cat((test_std_prediction_temp, model(inputMiniBatchesTest[minibatch])),axis=0)
+                train_prediction_temp = torch.cat((train_prediction_temp, model(inputMiniBatchesRep[minibatch])),axis=0) # To speed up only evaluate the representative training set
             
             #These starts putting the caculcated data into their respective graphing groups                
-            score_temp = v_accu_test(test_final_prediction_temp.cpu().detach().numpy().flatten(), test_outputs_np_batched)
+            score_temp = v_accu_test(test_prediction_temp.cpu().detach().numpy().flatten(), outputs_test_np_batched)
             accu_temp = np.sum(score_temp) / total_num
             graph_data['accu_vals'][epoch] = accu_temp 
             graph_data['accu_epochs'][epoch] = epoch 
@@ -181,11 +198,11 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
             np.add.at(grid_accu_tally, (grid_num, epoch, 0), score_temp)
             np.add.at(grid_accu_tally, (grid_num, epoch, 1), 1)
 
-            train_std_loss_temp = lossFunc(train_std_prediction_temp, std_outputs_rep_batched).item()
-            test_std_loss_temp = lossFunc(test_std_prediction_temp, std_test_outputs_batched).item() 
-            graph_data['train_loss_vals'][epoch] = train_std_loss_temp
+            train_loss_temp = lossFunc(train_prediction_temp, outputs_train_rep_batched).item()
+            test_loss_temp = lossFunc(test_prediction_temp, outputs_test_batched).item() 
+            graph_data['train_loss_vals'][epoch] = train_loss_temp
             graph_data['train_loss_epochs'][epoch] = epoch
-            graph_data['test_loss_vals'][epoch] = test_std_loss_temp
+            graph_data['test_loss_vals'][epoch] = test_loss_temp
             graph_data['test_loss_epochs'][epoch] = epoch
             graph_data['time_vals'][epoch] = time.perf_counter() - start_time
             graph_data['time_epochs'][epoch] = epoch
@@ -207,9 +224,9 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
         model.train()
 
         # Randomize minibatch selection again
-        idx = torch.randperm(torch.numel(std_outputs))
-        inputMiniBatches = torch.split(std_inputs[idx], parameters['batch_size'])
-        outputMiniBatches = torch.split(std_outputs[idx], parameters['batch_size'])
+        idx = torch.randperm(torch.numel(outputs_train))
+        inputMiniBatches = torch.split(inputs_train[idx], parameters['batch_size'])
+        outputMiniBatches = torch.split(outputs_train[idx], parameters['batch_size'])
 
         for minibatch in range(numMiniBatch):
             prediction = model(inputMiniBatches[minibatch])
@@ -219,22 +236,22 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
             #optimizer.zero_grad(set_to_none=True) # This is slower than the above by experiment.
             loss.backward()
             optimizer.step()
-        scheduler.step(test_std_loss_temp)
+        scheduler.step(test_loss_temp)
     
     # Data for the residual plots
     model.eval()
     
     with torch.no_grad():
         #Minibatching the last test data calculation
-        test_final_prediction_temp_final = torch.tensor([]).cuda()
+        test_prediction_temp_final = torch.tensor([]).cuda()
 
-        idx = torch.randperm(torch.numel(std_test_outputs))
-        inputMiniBatchesTest = torch.split(std_test_inputs[idx], parameters['batch_size'])
-        test_outputs_batched = test_outputs[idx]
+        idx = torch.randperm(torch.numel(outputs_test))
+        inputMiniBatchesTest = torch.split(inputs_test[idx], parameters['batch_size'])
+        test_outputs_batched = outputs_test[idx]
 
         for minibatch in range(numMiniBatchTest):
-            test_final_prediction_temp_final = torch.cat((test_final_prediction_temp_final, affine_untransform(model(inputMiniBatchesTest[minibatch]), output_stats)), axis=0)
-        residual = test_outputs_batched - test_final_prediction_temp_final #The numerical error of the current prediction for each test.
+            test_prediction_temp_final = torch.cat((test_prediction_temp_final, model(inputMiniBatchesTest[minibatch])), axis=0)
+        residual = test_outputs_batched - test_prediction_temp_final #The numerical error of the current prediction for each test.
         graph_data['out_residual_vals'] = residual.cpu().detach().numpy().flatten()
     
     # Data for the weights and biases histograms
@@ -250,7 +267,7 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
     graph_data['accu_out_grid_accu'] = ma.where(grid_accu_tally[:,:,1] == 0, ma.masked, grid_accu_tally[:,:,0] / grid_accu_tally_nonzero[:,:,1]) # Masked array
 
     # Other data
-    graph_data['test_outputs'] = test_outputs_np
+    graph_data['test_outputs'] = outputs_test_np
 
     print ('Training done!')
     print ('--- %s seconds ---' % (time.perf_counter() - start_time))
@@ -258,11 +275,11 @@ def train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outp
     return (graph_data, best_model_state, parameters_save)
 
 # New graph_data
-def new_graph_data(total_num, epochs):
+def new_graph_data(epochs):
     """
     Creates a new data dictionary for graphing later; The graphs are those pertaining to one run of one architecture only.
 
-    Inputs: total_num (the total number of testing data points; integer), epochs (integer)
+    Inputs: epochs (integer)
 
     Outputs: graph_data (dictionary)
     """
@@ -324,6 +341,7 @@ def new_graphs():
 
 
 # Do the graphing
+# TODO: Use OOP for graphing
 def graphing(graphs, graph_data, parameters):
     """
     Does the graphing.
@@ -334,7 +352,7 @@ def graphing(graphs, graph_data, parameters):
 
     param_str = '\n'.join((
         r'Training Size: %d' % parameters['train_size'],
-        r'Validation Size: %d' % parameters['test_size'],
+        r'Testing Size: %d' % parameters['test_size'],
         r'Nodes: %d' % parameters['hidden_nodes'],
         r'Layers: %d' % parameters['hidden_layers'],
         r'Minibatch Size: %d' % parameters['batch_size'],
@@ -343,7 +361,9 @@ def graphing(graphs, graph_data, parameters):
         r'Learning Rate Reduction Factor: %f' % parameters['lr_red_factor'],
         r'Learning Rate Reduction Patience: %d' % parameters['lr_red_patience'],
         r'Learning Rate Reduction Threshold: %f' % parameters['lr_red_threshold'],
-        r'Weight Decay: %f' % parameters['weight_decay']))
+        r'Weight Decay: %f' % parameters['weight_decay'],
+        r'Polynomial Layer: %f' % parameters['polynomial'],
+        r'Polynomial Degree: %f' % parameters['polynomial_degree']))
     props = {'boxstyle': 'round', 'facecolor': 'wheat', 'alpha': 0.5}
     graphs['ax_param'].text(0.05, 0.95, param_str, transform=graphs['ax_param'].transAxes, fontsize=14, verticalalignment='top', bbox=props)
     graphs['fig_param'].tight_layout()
@@ -414,15 +434,15 @@ def show_graphs(graphs):
     graphs['fig_biases']
 
 # Save all graphs in one pdf file
-def save_graphs(graphs, name):
+def save_graphs(graphs, graph_data, name):
     """
     Saves the graphs to one pdf.
 
-    Inputs: graphs (dictionary), name (string)
+    Inputs: graphs (dictionary), graph_data (dictionary), name (string)
 
     Outputs: None
     """
-    pp = PdfPages(name)
+    pp = PdfPages(f'{name}_train.pdf')
     pp.savefig(graphs['fig_time'])
     pp.savefig(graphs['fig_param'])
     pp.savefig(graphs['fig_loss'])
@@ -432,6 +452,8 @@ def save_graphs(graphs, name):
     pp.savefig(graphs['fig_weights'])
     pp.savefig(graphs['fig_biases'])
     pp.close()
+
+    np.savez(f'{name}_train.npz', **graph_data)
 
 # Analyze NN
 # TEST THIS
@@ -486,3 +508,83 @@ def analysis_graphing(analysis_graphs, analysis_data, param_list, trials):
     analysis_graphs['fig_analysis'].tight_layout()
 
     return analysis_graphs
+
+# Classes
+
+# Affine Layer (equivalent to nn.functional.Linear inside a Module)
+class LinearLayer(nn.Module):
+    """Outputs an affine transformation or its inverse of inputs.
+
+    y = x * A^T + b
+
+    Attributes:
+       A: The matrix to be applied to the input
+       b: The constant to be added to the input
+
+    """
+    def __init__(self, A: torch.Tensor, b: torch.Tensor) -> None:
+        """Constructor
+
+        Args:
+            A: The matrix to be applied to the input
+            b: The constant to be added to the input
+        """
+        
+        super(LinearLayer,self).__init__()
+
+        self.A = A.cuda()
+        self.b = b.cuda()
+
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        """Performs forward propagation for this module
+
+        Args: 
+            x: 
+              The input tensor to this layer. This function preserves
+              all indices except the last one, which is assumed to
+              index the input variables. Leading indices can be used
+              for minibatches or structuring the inputs.
+
+        """
+        
+        if x.shape[-1] != self.A.shape[1]:
+            raise IndexError(f'Expecting {x.shape[-1]} inputs for matrix, got {self.A.shape[1]}')
+        return nn.functional.linear(x, self.A, self.b)
+    
+# General Differentiable Layer
+# Warning: the function passed in needs to deal with all the indicies of the input, and is in general not easy to vectorize.
+class GeneralLayer(nn.Module):
+    """Outputs an arbitrary differentiable function of inputs.
+
+    Attributes:
+       n_inputs: The number of inputs this layer expects
+       fcn: The differentiable function to be applied to the inputs
+
+    """
+    def __init__(self, n_inputs: int, fcn: callable) -> None:
+        """Constructor
+
+        Args:
+            n_inputs: The number of inputs this layer expects
+            fcn: The differentiable function to be applied to the inputs
+        """
+        
+        super(GeneralLayer,self).__init__()
+
+        self.n_inputs = n_inputs
+        self.fcn = fcn
+
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        """Performs forward propagation for this module
+
+        Args: 
+            x: 
+              The input tensor to this layer. This function does NOT
+              preserve any indices. It merely applies the specified
+              function to the input.
+
+        """
+        
+        if x.shape[-1] != self.n_inputs:
+            raise IndexError(f'Expecting {self.n_inputs} inputs, got {x.shape[-1]}')
+        return self.fcn(x)
