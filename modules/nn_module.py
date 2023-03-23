@@ -393,7 +393,7 @@ def graphing(graphs, graph_data, parameters):
     test_loss_line, = graphs['ax_loss'].plot(graph_data['test_loss_epochs'], graph_data['test_loss_vals'], 'g-', linewidth=1)
     graphs['ax_loss'].legend([train_loss_line, test_loss_line], ['Train', 'Test'])
     graphs['ax_loss'].set_xlabel('Epochs')
-    graphs['ax_loss'].set_ylabel('Loss (After Standardization; MSE)')
+    graphs['ax_loss'].set_ylabel('MSE Loss)')
     graphs['ax_loss'].set_yscale('log')
     graphs['fig_loss'].tight_layout()
 
