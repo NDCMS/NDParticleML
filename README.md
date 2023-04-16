@@ -96,6 +96,7 @@ Here is a brief overview of each folder:
 
 Additional Notes:
 - Folders named `nb_code` contain the raw code of the Jupyter notebooks in the same directory. This is to keep track of meaningful changes in the notebooks. Therefore, please update the raw code every time a notebook is modified by saving the notebook as a `.py` file.
+- Data for the validation and analysis graphs, including the 1D and 2D `combine` scans, are in `CurateND`.
 
 <br/>
 
