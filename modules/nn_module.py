@@ -393,7 +393,7 @@ def graphing(graphs, graph_data, parameters):
     test_loss_line, = graphs['ax_loss'].plot(graph_data['test_loss_epochs'], graph_data['test_loss_vals'], 'g-', linewidth=1)
     graphs['ax_loss'].legend([train_loss_line, test_loss_line], ['Train', 'Test'])
     graphs['ax_loss'].set_xlabel('Epochs')
-    graphs['ax_loss'].set_ylabel('MSE Loss)')
+    graphs['ax_loss'].set_ylabel('MSE Loss')
     graphs['ax_loss'].set_yscale('log')
     graphs['fig_loss'].tight_layout()
 
@@ -454,6 +454,129 @@ def save_graphs(graphs, graph_data, name):
     pp.close()
 
     np.savez(f'{name}_train.npz', **graph_data)
+
+# TODO (code): Implement some sort of autotune
+# Profiled scans
+def profile(model, inputs_raw, idx_list, profile_parameters):
+    '''
+    Makes profiled likelihood scans. For given values of some WCs, finds the values of the other WCs that minimizes the NLL.
+
+    Inputs:
+        model: The trained DNN with all layers built in
+        inputs_raw (np array): The values of the input WCs to be scanned over. The values of the other
+          WCs (to be profiled over) don't matter.
+        idx_list: A list of the indices of the WCs to be scanned.
+        profile_parameters: A dictionary of the profiling hyperparameters, similar to DNN 
+        training:
+            batch_size
+            epochs
+            learning_rate
+            lr_red_factor
+            lr_red_patience
+            lr_red_threshold
+            rand_pts: The number of random starting points.
+            rand_stdev: The width of the distribution of the random starting points.
+                currently it's a uniform distribution, so this represents the width.
+
+    Outputs: A tuple of the following tensors:
+        min_WCs_scanned: The WC values profiled
+        outputs: The profiled likelihood values
+    '''
+
+    batch_size = profile_parameters['batch_size']
+    epochs = profile_parameters['epochs']
+    learning_rate = profile_parameters['learning_rate']
+    lr_red_factor = profile_parameters['lr_red_factor']
+    lr_red_patience = profile_parameters['lr_red_patience']
+    lr_red_threshold = profile_parameters['lr_red_threshold']
+    rand_pts = profile_parameters['rand_pts']
+    rand_stdev = profile_parameters['rand_stdev']
+
+    # TODO (code): Rewrite this segment in torch instead of np
+    inputs_shape = np.insert(np.array(inputs_raw.shape), -1, rand_pts)
+    inputs = (np.random.random_sample(inputs_shape) - 0.5) * rand_stdev
+    # copy over the WCs being scanned, while leaving the other 14 randomized
+    for idx in idx_list:
+        inputs[..., idx] = inputs_raw[..., np.newaxis, idx] # broadcasts into the random starting point axis
+    inputs = torch.from_numpy(inputs).float().cuda()
+    inputs.requires_grad = True
+    min_WCs_scanned = torch.full(inputs_raw.shape, torch.nan) # The optimized input WCs
+    outputs = torch.full((inputs_shape[0], 1), 10000.).cuda() # fill outputs with 10000. as a default (decimal to force dtype=float not int)
+    inputMiniBatches = torch.split(inputs, batch_size)
+    batch_idx = 0
+
+    start_time = time.perf_counter()
+
+     # Memory debugging info
+    '''
+    memory_fig, memory_ax = plt.subplots()
+    memory_count = 0
+    memory_count_arr = np.full((len(inputMiniBatches)*epochs), np.NaN)
+    memory_vals = np.full((len(inputMiniBatches)*epochs), np.NaN)
+    '''
+
+    for minibatch in range(len(inputMiniBatches)):
+        optimizer = torch.optim.Adam([inputs],lr=learning_rate)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=lr_red_factor, patience=lr_red_patience, threshold=lr_red_threshold)
+        inputMiniBatches = torch.split(inputs, batch_size)
+        batch_inputs = inputMiniBatches[minibatch]
+        min_outputs = model(batch_inputs)
+        min_WCs = batch_inputs.detach().clone() # A snapshot of the WCs of all the points to scan
+        optimizer.zero_grad()
+
+        info_string = 'WC indices: '
+        for idx in idx_list:
+            info_string += f'{idx} '
+        info_string += f'\nStarting {minibatch}/{len(inputMiniBatches)} minibatches.'
+        print (info_string)
+
+        for epoch in range(epochs):
+            print (f'Starting {epoch}/{epochs} epochs of {minibatch}/{len(inputMiniBatches)} minibatches.')
+
+            inputMiniBatches = torch.split(inputs, batch_size)
+            batch_inputs = inputMiniBatches[minibatch]
+            batch_outputs = model(batch_inputs)
+            batch_outputs_cp = batch_outputs.detach().clone()
+            batch_outputs_sum = torch.sum(torch.log(batch_outputs + 10)) # Optimize the sum of outputs + 10, equivalent to optimize each output
+            idx_to_update = torch.where(batch_outputs_cp < min_outputs)[0]
+            min_outputs[idx_to_update] = batch_outputs_cp[idx_to_update]
+            min_WCs[idx_to_update] = batch_inputs.detach().clone()[idx_to_update]
+            optimizer.zero_grad()
+            batch_outputs_sum.backward()
+            #print (torch.count_nonzero(inputs.grad))
+            #print (inputs.grad)
+            #print (inputs.grad[1500,31,6])
+            print (f'Sum(log(minibatch outputs+10)): {batch_outputs_sum}')
+            #print (f'Output of a random point: {batch_outputs[500,0,0]}')
+            for idx in idx_list:
+                inputs.grad[..., idx] = 0
+            optimizer.step()
+            scheduler.step(batch_outputs_sum) # learning rate reduction
+
+            '''
+            # Memory debugging info
+            memory_count_arr[memory_count] = memory_count
+            memory_vals[memory_count] = torch.cuda.memory_allocated()/1e9
+            memory_ax.cla()
+            memory_ax.plot(memory_count_arr, memory_vals)
+            memory_count += 1
+            '''
+
+        (min_outputs_scanned, min_starting_point_indicies) = torch.min(min_outputs, -2) # Get the best starting points
+
+        # Make the index tensor suitable for gathering the min_WCs
+        min_starting_point_indicies = min_starting_point_indicies.unsqueeze(-2)
+        min_starting_point_indicies_shape = list(min_starting_point_indicies.shape)
+        min_starting_point_indicies_shape[-1] = inputs_raw.shape[-1]
+        min_starting_point_indicies = min_starting_point_indicies.expand(min_starting_point_indicies_shape) # Warning: don't perform in-place operations on this since expand() does not allocate new memory
+
+        min_WCs_scanned[batch_idx: batch_idx + batch_outputs.shape[0]] = torch.squeeze(torch.gather(min_WCs, -2, min_starting_point_indicies), -2).detach().clone() # Get the WCs corresponding to the best-performing starting points
+        outputs[batch_idx: batch_idx + batch_outputs.shape[0]] = min_outputs_scanned.detach().clone() # detach from graph to delete obsolete graphs from memory! This was the culprit causing the memory leak
+        batch_idx += batch_outputs.shape[0]
+    print ('Profiling done!')
+    print (f'Time used: {time.perf_counter() - start_time} seconds.')
+    # These outputs are raw! Multiply by 2 outside
+    return (min_WCs_scanned, outputs)
 
 # Analyze NN
 # TEST THIS
