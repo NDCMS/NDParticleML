@@ -43,10 +43,10 @@ WC2d_2 = ['cbW', 'ctG', 'ctp', 'cQl3i', 'cQlMi', 'ctlTi', 'ctlSi', 'ctZ'] # The 
 # Hyperparameters for profiling
 profile_parameters = {}
 profile_parameters['batch_size'] = 4096
-profile_parameters['epochs'] = 100
-profile_parameters['learning_rate'] = 2e-0
+profile_parameters['epochs'] = 200
+profile_parameters['learning_rate'] = 4e-0
 profile_parameters['lr_red_factor'] = 0.2
-profile_parameters['lr_red_patience'] = 5
+profile_parameters['lr_red_patience'] = 1
 profile_parameters['lr_red_threshold'] = 1e-6
 profile_parameters['rand_pts'] = 50 # The number of random starting points to do gradient descent on for each scanned value
 profile_parameters['rand_stdev'] = 40
@@ -59,12 +59,6 @@ best_model_state = save_dict['model']
 parameters_save = save_dict['parameters']
 input_stats = save_dict['input_stats']
 output_stats = save_dict['output_stats']
-
-# Check to make sure we're on cuda
-print (f'Current device: {input_stats[0].device}')
-
-# Check memory usage
-print (f'Memory usage: {torch.cuda.memory_allocated() / 1e9} GB')
 
 # TODO: Cheat a little. Fix later by training with the additional layers.
 '''
@@ -120,52 +114,55 @@ for key in names.keys():
     diff_1d_zoomed_frozen_data[key] = {key: diff_1d_frozen_data[key][key][less_than_10], '2dNLL': diff_1d_frozen_data[key]['2dNLL'][less_than_10]}
 
 # Save the data
-data_dict['target_1d_frozen_data'] = target_1d_frozen_data
-data_dict['model_1d_frozen_data'] = model_1d_frozen_data
-data_dict['diff_1d_frozen_data'] = diff_1d_frozen_data
+data_dict['target_1d_frozen_data'] = copy.deepcopy(target_1d_frozen_data)
+data_dict['model_1d_frozen_data'] = copy.deepcopy(model_1d_frozen_data)
+data_dict['diff_1d_frozen_data'] = copy.deepcopy(diff_1d_frozen_data)
 
 # Data for 1D fake profiled graphs compared to Combine scans
 # Target data
-target_1d_profiled_data = {}
+target_1d_fake_profiled_data = {}
 for key in names.keys():
     loaded = np.load(f'likelihood_profiled_{key}.npz')
     inputs = np.zeros((loaded['deltaNLL'].shape[0], 16))
     for key2 in names.keys():
         inputs[:,names[key2]] = loaded[key2]
-    target_1d_profiled_data[key] = {'all_WCs': inputs, '2dNLL': loaded['deltaNLL']} # Inputs here contain all the WCs
-    target_1d_profiled_data[key]['2dNLL'] *= 2
+    target_1d_fake_profiled_data[key] = {'all_WCs': inputs, '2dNLL': loaded['deltaNLL']} # Inputs here contain all the WCs
+    target_1d_fake_profiled_data[key]['2dNLL'] *= 2
     
-target_1d_zoomed_profiled_data = {}
+target_1d_zoomed_fake_profiled_data = {}
 for key in names.keys():
-    less_than_10 = (target_1d_profiled_data[key]['2dNLL'] < 10)
-    target_1d_zoomed_profiled_data[key] = {'all_WCs': target_1d_profiled_data[key]['all_WCs'][less_than_10], '2dNLL': target_1d_profiled_data[key]['2dNLL'][less_than_10]}
+    less_than_10 = (target_1d_fake_profiled_data[key]['2dNLL'] < 10)
+    target_1d_zoomed_fake_profiled_data[key] = {'all_WCs': target_1d_fake_profiled_data[key]['all_WCs'][less_than_10], '2dNLL': target_1d_fake_profiled_data[key]['2dNLL'][less_than_10]}
+
 
 # Save the data
-data_dict['target_1d_profiled_data'] = target_1d_profiled_data
+data_dict['target_1d_fake_profiled_data'] = copy.deepcopy(target_1d_fake_profiled_data)
+
 
 # Model and diff data
 model_1d_fake_profiled_data = {}
 diff_1d_fake_profiled_data = {}
 for key in names.keys():
-    inputs = target_1d_profiled_data[key]['all_WCs']
+    inputs = target_1d_fake_profiled_data[key]['all_WCs']
     # Now requires model to have been trained with the polynomial layer
     if not (parameters_save['polynomial']):
         raise RuntimeError(f'Models without the polynomial layer are no longer supported! The number of inputs must match the number of WCs.')
     outputs = model(torch.from_numpy(inputs).float().cuda()).cpu().detach().numpy().flatten()
     outputs *= 2
     model_1d_fake_profiled_data[key] = {'all_WCs': inputs, '2dNLL': outputs}
-    diff_1d_fake_profiled_data[key] = {'all_WCs': inputs, '2dNLL': target_1d_profiled_data[key]['2dNLL'] - outputs}
+    diff_1d_fake_profiled_data[key] = {'all_WCs': inputs, '2dNLL': target_1d_fake_profiled_data[key]['2dNLL'] - outputs}
     
 model_1d_zoomed_fake_profiled_data = {}
 diff_1d_zoomed_fake_profiled_data = {}
 for key in names.keys():
-    less_than_10 = (target_1d_profiled_data[key]['2dNLL'] < 10)
+    less_than_10 = (target_1d_fake_profiled_data[key]['2dNLL'] < 10)
     model_1d_zoomed_fake_profiled_data[key] = {'all_WCs': model_1d_fake_profiled_data[key]['all_WCs'][less_than_10], '2dNLL': model_1d_fake_profiled_data[key]['2dNLL'][less_than_10]}
     diff_1d_zoomed_fake_profiled_data[key] = {'all_WCs': diff_1d_fake_profiled_data[key]['all_WCs'][less_than_10], '2dNLL': diff_1d_fake_profiled_data[key]['2dNLL'][less_than_10]}
 
 # Save the data
-data_dict['model_1d_fake_profiled_data'] = model_1d_fake_profiled_data
-data_dict['diff_1d_fake_profiled_data'] = diff_1d_fake_profiled_data
+data_dict['model_1d_fake_profiled_data'] = copy.deepcopy(model_1d_fake_profiled_data)
+data_dict['diff_1d_fake_profiled_data'] = copy.deepcopy(diff_1d_fake_profiled_data)
+
 
 # Data for 2D frozen graphs compared to Combine scans
 target_2d_frozen_data = {}
@@ -202,9 +199,10 @@ for num in np.arange(8):
     diff_2d_frozen_data[str(num)] = {WC2d_1[num]: target_2d_frozen_data[str(num)][WC2d_1[num]], WC2d_2[num]: target_2d_frozen_data[str(num)][WC2d_2[num]], '2dNLL': target_2d_frozen_data[str(num)]['2dNLL'] - outputs}
 
 # Save the data
-data_dict['target_2d_frozen_data'] = target_2d_frozen_data
-data_dict['model_2d_frozen_data'] = model_2d_frozen_data
-data_dict['diff_2d_frozen_data'] = diff_2d_frozen_data
+data_dict['target_2d_frozen_data'] = copy.deepcopy(target_2d_frozen_data)
+data_dict['model_2d_frozen_data'] = copy.deepcopy(model_2d_frozen_data)
+data_dict['diff_2d_frozen_data'] = copy.deepcopy(diff_2d_frozen_data)
+
 
 # Data for 2D fake profiled graphs compared to Combine scans
 # Target data
@@ -220,7 +218,8 @@ for num in np.arange(8):
     target_2d_profiled_data[str(num)]['2dNLL'] *= 2
 
 # Save the data
-data_dict['target_2d_profiled_data'] = target_2d_profiled_data
+data_dict['target_2d_profiled_data'] = copy.deepcopy(target_2d_profiled_data)
+
 
 # Model data
 model_2d_fake_profiled_data = {}
@@ -243,25 +242,41 @@ for num in np.arange(8):
     model_2d_fake_profiled_data[str(num)] = {'all_WCs': target_2d_profiled_data[str(num)]['all_WCs'], '2dNLL': outputs}
 
 # Save the data
-data_dict['model_2d_fake_profiled_data'] = model_2d_fake_profiled_data
+data_dict['model_2d_fake_profiled_data'] = copy.deepcopy(model_2d_fake_profiled_data)
+
 
 # Data for 1D real profiled graphs compared to Combine scans
-# For target data see before
+# Target data
+target_1d_profiled_data = {}
+for key in names.keys():
+    loaded = np.load(f'likelihood_profiled_{key}.npz')
+    target_1d_profiled_data[key] = {key: loaded[key], '2dNLL': loaded['deltaNLL']}
+    target_1d_profiled_data[key]['2dNLL'] *= 2
+
+target_1d_zoomed_profiled_data = {}
+for key in names.keys():
+    less_than_10 = (target_1d_profiled_data[key]['2dNLL'] < 10)
+    target_1d_zoomed_profiled_data[key] = {key: target_1d_profiled_data[key][key][less_than_10], '2dNLL': target_1d_profiled_data[key]['2dNLL'][less_than_10]}
+
+
 # Model and diff data
 model_1d_profiled_data = {}
 diff_1d_profiled_data = {}
 for key in names.keys():
-    inputs = target_1d_profiled_data[key]['all_WCs']
+    inputs = target_1d_profiled_data[key][key]
+    num_inputs = inputs.shape[0]
     # Now requires model to have been trained with the polynomial layer
     if not (parameters_save['polynomial']):
         raise RuntimeError(f'Models without the polynomial layer are no longer supported! The number of inputs must match the number of WCs.')
+    inputs_all = np.zeros((num_inputs, 16))
+    inputs_all[:,names[key]] = inputs
     # profile() currently takes inputs as an np array not tensor. I know, confusing, so to be fixed in the future.
-    (min_WCs_scanned, outputs) = nnm.profile(model, inputs, [names[key]], profile_parameters)
+    (min_WCs_scanned, outputs) = nnm.profile(model, inputs_all, [names[key]], profile_parameters)
     min_WCs_scanned = min_WCs_scanned.cpu().detach().numpy()
     outputs = outputs.cpu().detach().numpy().flatten()
     outputs *= 2
     model_1d_profiled_data[key] = {'all_WCs': min_WCs_scanned, '2dNLL': outputs}
-    diff_1d_profiled_data[key] = {'all_WCs': target_1d_profiled_data[key]['all_WCs'], '2dNLL': target_1d_profiled_data[key]['2dNLL'] - outputs}
+    diff_1d_profiled_data[key] = {'all_WCs': model_1d_profiled_data[key]['all_WCs'], '2dNLL': target_1d_profiled_data[key]['2dNLL'] - outputs}
     
 model_1d_zoomed_profiled_data = {}
 diff_1d_zoomed_profiled_data = {}
@@ -271,10 +286,13 @@ for key in names.keys():
     diff_1d_zoomed_profiled_data[key] = {'all_WCs': diff_1d_profiled_data[key]['all_WCs'][less_than_10], '2dNLL': diff_1d_profiled_data[key]['2dNLL'][less_than_10]}
 
 # Save the data
-data_dict['model_1d_profiled_data'] = model_1d_profiled_data
-data_dict['diff_1d_profiled_data'] = diff_1d_profiled_data
+data_dict['target_1d_profiled_data'] = copy.deepcopy(target_1d_profiled_data)
+data_dict['model_1d_profiled_data'] = copy.deepcopy(model_1d_profiled_data)
+data_dict['diff_1d_profiled_data'] = copy.deepcopy(diff_1d_profiled_data)
+
 
 # Data for 2D real profiled graphs compared to Combine scans
+# For target data see before
 # Model data
 model_2d_profiled_data = {}
 # Because this takes some time, select which graphs you want to make.
@@ -287,8 +305,10 @@ for num in nums:
     outputs *= 2
     model_2d_profiled_data[str(num)] = {'all_WCs': min_WCs_scanned, '2dNLL': outputs}
 
+
 # Save the data
-data_dict['model_2d_profiled_data'] = model_2d_profiled_data
+data_dict['model_2d_profiled_data'] = copy.deepcopy(model_2d_profiled_data)
+
 
 # Make the graphs
 
@@ -334,6 +354,7 @@ for key in names.keys():
     zoomed_frozen_1d_graphs[key][1].set_title('Frozen')
     zoomed_frozen_1d_graphs[key][0].tight_layout()
 
+
 # Save the graphs
 for key in frozen_1d_graphs.keys():
     pp.savefig(frozen_1d_graphs[key][0])
@@ -347,13 +368,13 @@ for key in zoomed_frozen_1d_graphs.keys():
 # 1D fake profiled graphs compared to Combine scans
 fake_profiled_1d_graphs = {}
 for key in names.keys():
-    target_1d_profiled_data[key]['2dNLL'] -= target_1d_profiled_data[key]['2dNLL'].min()
+    target_1d_fake_profiled_data[key]['2dNLL'] -= target_1d_fake_profiled_data[key]['2dNLL'].min()
     model_1d_fake_profiled_data[key]['2dNLL'] -= model_1d_fake_profiled_data[key]['2dNLL'].min()
     fake_profiled_1d_graphs[key] = plt.subplots()
-    target_scatter = fake_profiled_1d_graphs[key][1].scatter(target_1d_profiled_data[key]['all_WCs'][:,names[key]], target_1d_profiled_data[key]['2dNLL'], marker='^', c='none', ec='k', s=5, linewidths=0.2)
+    target_scatter = fake_profiled_1d_graphs[key][1].scatter(target_1d_fake_profiled_data[key]['all_WCs'][:,names[key]], target_1d_fake_profiled_data[key]['2dNLL'], marker='^', c='none', ec='k', s=5, linewidths=0.2)
     model_scatter = fake_profiled_1d_graphs[key][1].scatter(model_1d_fake_profiled_data[key]['all_WCs'][:,names[key]], model_1d_fake_profiled_data[key]['2dNLL'], marker='v', c='none', ec='g', s=5, linewidths=0.2)
-    one_line, = fake_profiled_1d_graphs[key][1].plot([target_1d_profiled_data[key]['all_WCs'][:,names[key]].min(), target_1d_profiled_data[key]['all_WCs'][:,names[key]].max()], [1,1], 'r--', linewidth=0.5)
-    four_line, = fake_profiled_1d_graphs[key][1].plot([target_1d_profiled_data[key]['all_WCs'][:,names[key]].min(), target_1d_profiled_data[key]['all_WCs'][:,names[key]].max()], [4,4], 'm:', linewidth=0.5)
+    one_line, = fake_profiled_1d_graphs[key][1].plot([target_1d_fake_profiled_data[key]['all_WCs'][:,names[key]].min(), target_1d_fake_profiled_data[key]['all_WCs'][:,names[key]].max()], [1,1], 'r--', linewidth=0.5)
+    four_line, = fake_profiled_1d_graphs[key][1].plot([target_1d_fake_profiled_data[key]['all_WCs'][:,names[key]].min(), target_1d_fake_profiled_data[key]['all_WCs'][:,names[key]].max()], [4,4], 'm:', linewidth=0.5)
     fake_profiled_1d_graphs[key][1].legend([target_scatter, model_scatter, one_line, four_line], ['Target', 'NN Prediction', '$1\sigma\ (2\Delta NLL=1)$', '$2\sigma\ (2\Delta NLL=4)$'], markerscale=3)
     fake_profiled_1d_graphs[key][1].set_xlabel(key)
     fake_profiled_1d_graphs[key][1].set_ylabel('2$\Delta$NLL')
@@ -362,13 +383,13 @@ for key in names.keys():
 
 zoomed_fake_profiled_1d_graphs = {}
 for key in names.keys():
-    target_1d_zoomed_profiled_data[key]['2dNLL'] -= target_1d_zoomed_profiled_data[key]['2dNLL'].min()
+    target_1d_zoomed_fake_profiled_data[key]['2dNLL'] -= target_1d_zoomed_fake_profiled_data[key]['2dNLL'].min()
     model_1d_zoomed_fake_profiled_data[key]['2dNLL'] -= model_1d_zoomed_fake_profiled_data[key]['2dNLL'].min()
     zoomed_fake_profiled_1d_graphs[key] = plt.subplots()
-    target_scatter = zoomed_fake_profiled_1d_graphs[key][1].scatter(target_1d_zoomed_profiled_data[key]['all_WCs'][:,names[key]], target_1d_zoomed_profiled_data[key]['2dNLL'], marker='^', c='none', ec='k', s=5, linewidths=0.2)
+    target_scatter = zoomed_fake_profiled_1d_graphs[key][1].scatter(target_1d_zoomed_fake_profiled_data[key]['all_WCs'][:,names[key]], target_1d_zoomed_fake_profiled_data[key]['2dNLL'], marker='^', c='none', ec='k', s=5, linewidths=0.2)
     model_scatter = zoomed_fake_profiled_1d_graphs[key][1].scatter(model_1d_zoomed_fake_profiled_data[key]['all_WCs'][:,names[key]], model_1d_zoomed_fake_profiled_data[key]['2dNLL'], marker='v', c='none', ec='g', s=5, linewidths=0.2)
-    one_line, = zoomed_fake_profiled_1d_graphs[key][1].plot([target_1d_zoomed_profiled_data[key]['all_WCs'][:,names[key]].min(), target_1d_zoomed_profiled_data[key]['all_WCs'][:,names[key]].max()], [1,1], 'r--', linewidth=0.5)
-    four_line, = zoomed_fake_profiled_1d_graphs[key][1].plot([target_1d_zoomed_profiled_data[key]['all_WCs'][:,names[key]].min(), target_1d_zoomed_profiled_data[key]['all_WCs'][:,names[key]].max()], [4,4], 'm:', linewidth=0.5)
+    one_line, = zoomed_fake_profiled_1d_graphs[key][1].plot([target_1d_zoomed_fake_profiled_data[key]['all_WCs'][:,names[key]].min(), target_1d_zoomed_fake_profiled_data[key]['all_WCs'][:,names[key]].max()], [1,1], 'r--', linewidth=0.5)
+    four_line, = zoomed_fake_profiled_1d_graphs[key][1].plot([target_1d_zoomed_fake_profiled_data[key]['all_WCs'][:,names[key]].min(), target_1d_zoomed_fake_profiled_data[key]['all_WCs'][:,names[key]].max()], [4,4], 'm:', linewidth=0.5)
     zoomed_fake_profiled_1d_graphs[key][1].legend([target_scatter, model_scatter, one_line, four_line], ['Target', 'NN Prediction', '$1\sigma\ (2\Delta NLL=1)$', '$2\sigma\ (2\Delta NLL=4)$'], markerscale=3)
     zoomed_fake_profiled_1d_graphs[key][1].set_xlabel(key)
     zoomed_fake_profiled_1d_graphs[key][1].set_ylabel('2$\Delta$NLL')
@@ -442,10 +463,10 @@ for key in names.keys():
     target_1d_profiled_data[key]['2dNLL'] -= target_1d_profiled_data[key]['2dNLL'].min()
     model_1d_profiled_data[key]['2dNLL'] -= model_1d_profiled_data[key]['2dNLL'].min()
     profiled_1d_graphs[key] = plt.subplots()
-    target_scatter = profiled_1d_graphs[key][1].scatter(target_1d_profiled_data[key]['all_WCs'][:,names[key]], target_1d_profiled_data[key]['2dNLL'], marker='^', c='none', ec='k', s=5, linewidths=0.2)
+    target_scatter = profiled_1d_graphs[key][1].scatter(target_1d_profiled_data[key][key], target_1d_profiled_data[key]['2dNLL'], marker='^', c='none', ec='k', s=5, linewidths=0.2)
     model_scatter = profiled_1d_graphs[key][1].scatter(model_1d_profiled_data[key]['all_WCs'][:,names[key]], model_1d_profiled_data[key]['2dNLL'], marker='v', c='none', ec='g', s=5, linewidths=0.2)
-    one_line, = profiled_1d_graphs[key][1].plot([target_1d_profiled_data[key]['all_WCs'][:,names[key]].min(), target_1d_profiled_data[key]['all_WCs'][:,names[key]].max()], [1,1], 'r--', linewidth=0.5)
-    four_line, = profiled_1d_graphs[key][1].plot([target_1d_profiled_data[key]['all_WCs'][:,names[key]].min(), target_1d_profiled_data[key]['all_WCs'][:,names[key]].max()], [4,4], 'm:', linewidth=0.5)
+    one_line, = profiled_1d_graphs[key][1].plot([target_1d_profiled_data[key][key].min(), target_1d_profiled_data[key][key].max()], [1,1], 'r--', linewidth=0.5)
+    four_line, = profiled_1d_graphs[key][1].plot([target_1d_profiled_data[key][key].min(), target_1d_profiled_data[key][key].max()], [4,4], 'm:', linewidth=0.5)
     profiled_1d_graphs[key][1].legend([target_scatter, model_scatter, one_line, four_line], ['Target', 'NN Prediction', '$1\sigma\ (2\Delta NLL=1)$', '$2\sigma\ (2\Delta NLL=4)$'], markerscale=3)
     profiled_1d_graphs[key][1].set_xlabel(key)
     profiled_1d_graphs[key][1].set_ylabel('2$\Delta$NLL')
@@ -457,10 +478,10 @@ for key in names.keys():
     target_1d_zoomed_profiled_data[key]['2dNLL'] -= target_1d_zoomed_profiled_data[key]['2dNLL'].min()
     model_1d_zoomed_profiled_data[key]['2dNLL'] -= model_1d_zoomed_profiled_data[key]['2dNLL'].min()
     zoomed_profiled_1d_graphs[key] = plt.subplots()
-    target_scatter = zoomed_profiled_1d_graphs[key][1].scatter(target_1d_zoomed_profiled_data[key]['all_WCs'][:,names[key]], target_1d_zoomed_profiled_data[key]['2dNLL'], marker='^', c='none', ec='k', s=5, linewidths=0.2)
+    target_scatter = zoomed_profiled_1d_graphs[key][1].scatter(target_1d_zoomed_profiled_data[key][key], target_1d_zoomed_profiled_data[key]['2dNLL'], marker='^', c='none', ec='k', s=5, linewidths=0.2)
     model_scatter = zoomed_profiled_1d_graphs[key][1].scatter(model_1d_zoomed_profiled_data[key]['all_WCs'][:,names[key]], model_1d_zoomed_profiled_data[key]['2dNLL'], marker='v', c='none', ec='g', s=5, linewidths=0.2)
-    one_line, = zoomed_profiled_1d_graphs[key][1].plot([target_1d_zoomed_profiled_data[key]['all_WCs'][:,names[key]].min(), target_1d_zoomed_profiled_data[key]['all_WCs'][:,names[key]].max()], [1,1], 'r--', linewidth=0.5)
-    four_line, = zoomed_profiled_1d_graphs[key][1].plot([target_1d_zoomed_profiled_data[key]['all_WCs'][:,names[key]].min(), target_1d_zoomed_profiled_data[key]['all_WCs'][:,names[key]].max()], [4,4], 'm:', linewidth=0.5)
+    one_line, = zoomed_profiled_1d_graphs[key][1].plot([target_1d_zoomed_profiled_data[key][key].min(), target_1d_zoomed_profiled_data[key][key].max()], [1,1], 'r--', linewidth=0.5)
+    four_line, = zoomed_profiled_1d_graphs[key][1].plot([target_1d_zoomed_profiled_data[key][key].min(), target_1d_zoomed_profiled_data[key][key].max()], [4,4], 'm:', linewidth=0.5)
     zoomed_profiled_1d_graphs[key][1].legend([target_scatter, model_scatter, one_line, four_line], ['Target', 'NN Prediction', '$1\sigma\ (2\Delta NLL=1)$', '$2\sigma\ (2\Delta NLL=4)$'], markerscale=3)
     zoomed_profiled_1d_graphs[key][1].set_xlabel(key)
     zoomed_profiled_1d_graphs[key][1].set_ylabel('2$\Delta$NLL')
