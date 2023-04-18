@@ -1,34 +1,35 @@
 # NDParticleML
 
-This code seeks to construct neural networks which explore dim-6 effective field operators through particle collision data. 
+This code seeks to train neural networks to learn likelihood functions (LFs) in the Standard Model effective field theory framework calculated from simulated yields parameterized by Wilson Coefficients and observed yields in the CMS detector.
 
 ## Overview
 
-The workflow consists of three steps: training, validation, and analysis. Training and validation are completed (although still being improved), but analysis is still to be done.
+The workflow consists of three steps: training, validation, and analysis. Training and validation are completed (although still being improved), and analysis is still in its early stages.
 
 <br/>
 
-**Training**: During this step, a neural network (NN) is trained on likelihood data from the LHC CMS experiment to approximate the likelihood function (LF) with sufficient accuracy.
+**Training**: During this step, a neural network (NN) is trained on a sampling of the LF from the LHC CMS experiment to approximate the LF with sufficient accuracy.
 - Requirements
-    - A `Combine` sampling of the LF
+    - A `combine` sampling of the LF
 - Products
-    - A trained NN as a `pt` file
+    - A trained NN as a `.pt` file
 
 <br/>
 
-**Validation**: During this step, the trained NN is tested against "correct" data to analyze its accuracy.
+**Validation**: During this step, the trained NN is tested against correct data—`combine` scans—to analyze its accuracy.
 - Requirements
-    - `Combine` low-dimentional scans of the LF
+    - `combine` low-dimentional scans of the LF
     - A trained NN
 - Products
-    - Comparison graphs between `Combine` scans and NN scans
+    - Comparison graphs between `combine` scans and NN scans
 
 <br/>
 
-**Analysis**: During this step, we take the trained NN as the LF and explore the 16D parameter space, taking advantage of the speedup over `Combine` samplings.
+**Analysis**: During this step, we take the trained NN as the LF and explore the 16D parameter space, taking advantage of the speedup over `combine` samplings.
 - Requirements
     - A trained NN
 - Products
+    - Scans over linear combinations of WCs
     - TBD
 
 <br/>
@@ -57,7 +58,7 @@ Via batch system:
     - `./archive/v1/training/likelihood.submit`
     - `./archive/v1/modules/nn_module_v1.py`
     - `/tmpscratch/sliu24/demos/likelihood_data_processed.npz`
-- Check if import has the right `nn_module` name
+- Check if the `import` statement has the right `nn_module` name
 - Run `condor_submit likelihood.submit`
 - After finished, there will be graphs and the trained model in their respective folder.
 
