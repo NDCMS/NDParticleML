@@ -44,6 +44,7 @@ For NDCMS members, [this Google Doc](https://docs.google.com/document/d/17Ql04YO
 - Get a CRC account
 - Find your personal CRC directory, including your `scratch365` space.
 - Be able to log into CAML's Jupyterhub at https://camlnd.crc.nd.edu:9800/hub/home.
+- Gain access to the data files on CurateND. It's called "DNNLikelihood Data".
 
 For general use:
 - Make sure to run everything on `CUDA`.
@@ -57,7 +58,7 @@ Via batch system:
     - `./archive/v1/training/likelihood.sh`
     - `./archive/v1/training/likelihood.submit`
     - `./archive/v1/modules/nn_module_v1.py`
-    - `/tmpscratch/sliu24/demos/likelihood_data_processed.npz`
+    - `likelihood_data_processed.npz` on CurateND
 - Check if the `import` statement has the right `nn_module` name
 - Run `condor_submit likelihood.submit`
 - After finished, there will be graphs and the trained model in their respective folder.
@@ -68,7 +69,7 @@ Via Jupyter Notebook:
 - Copy the following into your working directory
     - The Jupyter Notebook
     - `./archive/v1/modules/nn_module_v1.py`
-    - `/tmpscratch/sliu24/demos/likelihood_data_processed.npz`
+    - `likelihood_data_processed.npz` on CurateND
 - Check if import has the right `nn_module` name
 - Run the notebook
 - After finished, there will be graphs and the trained model in your working directory.

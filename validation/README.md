@@ -8,7 +8,7 @@ This folder contains current NN validation code.
 
 ## Notes
 
-- The current `combine` scan data is in `/scratch365/sliu24/likelihood/validation/`.
+- The current `combine` scan data is in `/scratch365/sliu24/likelihood/validation/`. A copy can also be found in CurateND.
 - There is an unknown constant shift between the 7M dataset (probably lost), the 50M dataset (`/scratch365/klannon/dnnlikelihood/likelihood_data_no_delta.npz`), the frozen `combine` scans, and the profiled `combine` scans.
     - The frozen scans seem to all be shifted so that their respective minima are 0.
     - The profiled scans (as of 4/3/2023) share the same shift as the 7M dataset.
