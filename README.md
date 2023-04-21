@@ -44,7 +44,7 @@ For NDCMS members, [this Google Doc](https://docs.google.com/document/d/17Ql04YO
 - Get a CRC account
 - Find your personal CRC directory, including your `scratch365` space.
 - Be able to log into CAML's Jupyterhub at https://camlnd.crc.nd.edu:9800/hub/home.
-- Gain access to the data files on CurateND. It's called "DNNLikelihood Data".
+- Gain access to the data files on CurateND. It's called "DNNLikelihood Data", and the link is https://curate.nd.edu/show/5m60qr49v54.
 
 For general use:
 - Make sure to run everything on `CUDA`.
