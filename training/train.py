@@ -1,5 +1,5 @@
 # %matplotlib notebook
-import NN_Module as nnm
+import nn_module as nnm
 import torch
 import numpy as np
 import numpy.ma as ma
@@ -162,7 +162,7 @@ total_data = outputs_all.shape[0]
 train_proportion = 0.99
 validation_proportion = 0.01
 
-# Create a representative validation set
+# Create a representative testing set
 index_test = np.random.choice(total_data, int(total_data*validation_proportion), replace=False)
 test_inputs = inputs_all[index_test]
 test_outputs = outputs_all[index_test]
@@ -198,28 +198,19 @@ parameters['out_residual_resolution'] = args.out_residual_resolution
 # Standardize data sets
 input_stats = nnm.find_stats(inputs)
 output_stats = nnm.find_stats(outputs)
-std_inputs = nnm.affine_transform(inputs, input_stats)
-std_test_inputs = nnm.affine_transform(test_inputs, input_stats) # Not actually normal; Only std_inputs is normal
-std_outputs = nnm.affine_transform(outputs, output_stats)
-std_test_outputs = nnm.affine_transform(test_outputs, output_stats)
-
-# Create a representative training set
-index_std_train_rep = np.random.choice(parameters['train_size'], parameters['test_size'], replace=False)
-std_inputs_rep = std_inputs[index_std_train_rep]
-std_outputs_rep = std_outputs[index_std_train_rep]
 
 # Create a model
-model = nnm.create_model(inputs.shape[1], outputs.shape[1], parameters)
+model = nnm.create_model(inputs.shape[1], outputs.shape[1], parameters, input_stats, output_stats)
 
 # Train the model
-(graph_data, best_model_state, parameters_save) = nnm.train_network(model, std_inputs, std_outputs, std_test_inputs, std_test_outputs, output_stats, std_inputs_rep, std_outputs_rep, parameters)
+(graph_data, best_model_state, parameters_save) = nnm.train_network(model, inputs, outputs, test_inputs, test_outputs, parameters)
 
 # Graphing
 graphs = nnm.new_graphs()
 nnm.graphing(graphs, graph_data, parameters)
 
-# Save all graphs
-nnm.save_graphs(graphs, f'./graphs/{args.out_file}.pdf')
+# Save all graphs and their data
+nnm.save_graphs(graphs, graph_data, f'./graphs/{args.out_file}')
 
 # Save the model, parameters, and standardization stats
 save_dict = {'model': best_model_state, 'parameters': parameters_save, 'input_stats': input_stats, 'output_stats': output_stats}

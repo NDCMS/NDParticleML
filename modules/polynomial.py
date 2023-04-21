@@ -10,7 +10,7 @@ from torch import nn
 import math
 
 class MonomialLayer(nn.Module):
-    """Outputs all possible monomials up to given degree from inpupts.
+    """Outputs all possible monomials up to given degree from inputs.
 
     The basic idea is to add the number 1 to the list of inputs and
     then create every possible monomial of the given degree from

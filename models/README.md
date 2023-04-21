@@ -35,3 +35,5 @@ This folder contains good trained models.
 - Learning Rate Reduction Patience: 20
 - Learning Rate Reduction Threshold: 10<sup>-6</sup>
 - Weight Decay: 0.000000
+
+`15708_2` is on par with `12643_0` and uses the same hyperparameters. It is trained with the standardization and linear combination layers built in.

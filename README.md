@@ -1,34 +1,35 @@
 # NDParticleML
 
-This code seeks to construct neural networks which explore dim-6 effective field operators through particle collision data. 
+This code seeks to train neural networks to learn likelihood functions (LFs) in the Standard Model effective field theory framework calculated from simulated yields parameterized by Wilson Coefficients and observed yields in the CMS detector.
 
 ## Overview
 
-The workflow consists of three steps: training, validation, and analysis. Training and validation are completed (although still being improved), but analysis is still to be done.
+The workflow consists of three steps: training, validation, and analysis. Training and validation are completed (although still being improved), and analysis is still in its early stages.
 
 <br/>
 
-**Training**: During this step, a neural network (NN) is trained on likelihood data from the LHC CMS experiment to approximate the likelihood function (LF) with sufficient accuracy.
+**Training**: During this step, a neural network (NN) is trained on a sampling of the LF from the LHC CMS experiment to approximate the LF with sufficient accuracy.
 - Requirements
-    - A `Combine` sampling of the LF
+    - A `combine` sampling of the LF
 - Products
-    - A trained NN as a `pt` file
+    - A trained NN as a `.pt` file
 
 <br/>
 
-**Validation**: During this step, the trained NN is tested against "correct" data to analyze its accuracy.
+**Validation**: During this step, the trained NN is tested against correct data—`combine` scans—to analyze its accuracy.
 - Requirements
-    - `Combine` low-dimentional scans of the LF
+    - `combine` low-dimentional scans of the LF
     - A trained NN
 - Products
-    - Comparison graphs between `Combine` scans and NN scans
+    - Comparison graphs between `combine` scans and NN scans
 
 <br/>
 
-**Analysis**: During this step, we take the trained NN as the LF and explore the 16D parameter space, taking advantage of the speedup over `Combine` samplings.
+**Analysis**: During this step, we take the trained NN as the LF and explore the 16D parameter space, taking advantage of the speedup over `combine` samplings.
 - Requirements
     - A trained NN
 - Products
+    - Scans over linear combinations of WCs
     - TBD
 
 <br/>
@@ -43,6 +44,7 @@ For NDCMS members, [this Google Doc](https://docs.google.com/document/d/17Ql04YO
 - Get a CRC account
 - Find your personal CRC directory, including your `scratch365` space.
 - Be able to log into CAML's Jupyterhub at https://camlnd.crc.nd.edu:9800/hub/home.
+- Gain access to the data files on CurateND. It's called "DNNLikelihood Data", and the link is https://curate.nd.edu/show/5m60qr49v54.
 
 For general use:
 - Make sure to run everything on `CUDA`.
@@ -56,8 +58,8 @@ Via batch system:
     - `./archive/v1/training/likelihood.sh`
     - `./archive/v1/training/likelihood.submit`
     - `./archive/v1/modules/nn_module_v1.py`
-    - `/tmpscratch/sliu24/demos/likelihood_data_processed.npz`
-- Check if import has the right `nn_module` name
+    - `likelihood_data_processed.npz` on CurateND
+- Check if the `import` statement has the right `nn_module` name
 - Run `condor_submit likelihood.submit`
 - After finished, there will be graphs and the trained model in their respective folder.
 
@@ -67,7 +69,7 @@ Via Jupyter Notebook:
 - Copy the following into your working directory
     - The Jupyter Notebook
     - `./archive/v1/modules/nn_module_v1.py`
-    - `/tmpscratch/sliu24/demos/likelihood_data_processed.npz`
+    - `likelihood_data_processed.npz` on CurateND
 - Check if import has the right `nn_module` name
 - Run the notebook
 - After finished, there will be graphs and the trained model in your working directory.
@@ -94,8 +96,15 @@ Here is a brief overview of each folder:
 - `training`: Code for training NNs
 - `validation`: Code for validating NNs
 
+Additional Notes:
+- Folders named `nb_code` contain the raw code of the Jupyter notebooks in the same directory. This is to keep track of meaningful changes in the notebooks. Therefore, please update the raw code every time a notebook is modified by saving the notebook as a `.py` file.
+- Data for the validation and analysis graphs, including the 1D and 2D `combine` scans, are in `CurateND`.
+
 <br/>
 
 ## TODOs
 
 - Make sure all validation codes are compatible with the changes associated with compare_plots.
+- Use early stopping for training.
+- See #TODOs scattered around the repository.
+- Link to storage for large files, such as training data and graphing data.
