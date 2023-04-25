@@ -498,6 +498,9 @@ def profile(model, inputs_raw, idx_list, profile_parameters):
     # copy over the WCs being scanned, while leaving the other 14 randomized
     for idx in idx_list:
         inputs[..., idx] = inputs_raw[..., np.newaxis, idx] # broadcasts into the random starting point axis
+        # TODO (code): Try randomizing inputs_raw before doing anything. Currently, the 
+        # points with similar likelihoods are always profiled together, which may not have 
+        # the same optimal hyperparameters.
     inputs = torch.from_numpy(inputs).float().cuda()
     inputs.requires_grad = True
     min_WCs_scanned = torch.full(inputs_raw.shape, torch.nan) # The optimized input WCs

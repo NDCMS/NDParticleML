@@ -44,7 +44,7 @@ For NDCMS members, [this Google Doc](https://docs.google.com/document/d/17Ql04YO
 - Get a CRC account
 - Find your personal CRC directory, including your `scratch365` space.
 - Be able to log into CAML's Jupyterhub at https://camlnd.crc.nd.edu:9800/hub/home.
-- Gain access to the data files on CurateND. It's called "DNNLikelihood Data", and the link is https://curate.nd.edu/show/5m60qr49v54.
+- Gain access to the data files on `CurateND`. It's called "DNNLikelihood Data", and the link is https://curate.nd.edu/show/5m60qr49v54.
 
 For general use:
 - Make sure to run everything on `CUDA`.
@@ -58,7 +58,7 @@ Via batch system:
     - `./archive/v1/training/likelihood.sh`
     - `./archive/v1/training/likelihood.submit`
     - `./archive/v1/modules/nn_module_v1.py`
-    - `likelihood_data_processed.npz` on CurateND
+    - `likelihood_data_processed.npz` on `CurateND`
 - Check if the `import` statement has the right `nn_module` name
 - Run `condor_submit likelihood.submit`
 - After finished, there will be graphs and the trained model in their respective folder.
@@ -69,7 +69,7 @@ Via Jupyter Notebook:
 - Copy the following into your working directory
     - The Jupyter Notebook
     - `./archive/v1/modules/nn_module_v1.py`
-    - `likelihood_data_processed.npz` on CurateND
+    - `likelihood_data_processed.npz` on `CurateND`
 - Check if import has the right `nn_module` name
 - Run the notebook
 - After finished, there will be graphs and the trained model in your working directory.
@@ -105,6 +105,25 @@ Additional Notes:
 ## TODOs
 
 - Make sure all validation codes are compatible with the changes associated with compare_plots.
-- Use early stopping for training.
+- Training
+    - early stopping
+    - Try using loss instead of accuracy to select models. Not sure if this will be good, but it seems like the loss keeps decreasing while the accuracy bottoms out.
+    - Sample the LF automatically, i.e. automatically oversampling regions with high LF.
+    - Possibly outdated: try using `np.triu_indices` to compute the quadratic WC terms.
+    - Possibly not there yet: Try DNN pruning.
+- Validation
+    - Use random minimatches for profiling. See the TODO in the `profile` function in `nn_module`.
+- Analysis
+    - Fit to a hyperellipse, i.e. find the flattest direction, then find the flattest direction in the space orthogonal to the first direction, and so on.
+    - Talk to theorists to find more applications of linear combination WC scans.
+    - Explore the topology in higher-dimensional spaces. Start with Parker's notebook `/analysis/3d_mapper.ipynb`.
+- General
+    - Just for organization, save the raw data for graphs using multiindex dataframes. Currently everything is saved in dictionaries of dictionaries.
+- Papers for onboarding
+    - TOP-19-001: https://arxiv.org/abs/2012.04120
+    - DNNLikelihood: https://arxiv.org/abs/1911.03305
+    - dim6top: https://arxiv.org/abs/1802.07237
+    - TOP-22-006: https://cds.cern.ch/record/2851651
+- Papers to study for future directions
+    - Global SMEFT fit: https://arxiv.org/abs/2105.00006
 - See #TODOs scattered around the repository.
-- Link to storage for large files, such as training data and graphing data.
