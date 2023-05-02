@@ -96,6 +96,12 @@ over_proportion = 1
 index_under = np.random.choice(under_50_num, int(under_50_num*under_proportion), replace=False)
 index_over = np.random.choice(over_50_num, int(over_50_num*over_proportion), replace=False)
 
+try:
+    loaded_data['cQq13'][index_under]
+    wc_26 = True
+except:
+    wc_26 = False
+
 # Load desired proportion of WC values
 cQei = np.concatenate((loaded_data['cQei'][index_under], loaded_data['cQei'][index_over]), axis=0)
 cQl3i = np.concatenate((loaded_data['cQl3i'][index_under], loaded_data['cQl3i'][index_over]), axis=0)
@@ -113,6 +119,20 @@ ctlSi = np.concatenate((loaded_data['ctlSi'][index_under], loaded_data['ctlSi'][
 ctlTi = np.concatenate((loaded_data['ctlTi'][index_under], loaded_data['ctlTi'][index_over]), axis=0)
 ctli = np.concatenate((loaded_data['ctli'][index_under], loaded_data['ctli'][index_over]), axis=0)
 ctp = np.concatenate((loaded_data['ctp'][index_under], loaded_data['ctp'][index_over]), axis=0)
+
+if (wc_26):
+  cQq13 = np.concatenate((loaded_data['cQq13'][index_under], loaded_data['cQq13'][index_over]), axis=0)
+  cQq83 = np.concatenate((loaded_data['cQq83'][index_under], loaded_data['cQq83'][index_over]), axis=0)
+  cQq11 = np.concatenate((loaded_data['cQq11'][index_under], loaded_data['cQq11'][index_over]), axis=0)
+  ctq1 = np.concatenate((loaded_data['ctq1'][index_under], loaded_data['ctq1'][index_over]), axis=0)
+  cQq81 = np.concatenate((loaded_data['cQq81'][index_under], loaded_data['cQq81'][index_over]), axis=0)
+  ctq8 = np.concatenate((loaded_data['ctq8'][index_under], loaded_data['ctq8'][index_over]), axis=0)
+  ctt1 = np.concatenate((loaded_data['ctt1'][index_under], loaded_data['ctt1'][index_over]), axis=0)
+  cQQ1 = np.concatenate((loaded_data['cQQ1'][index_under], loaded_data['cQQ1'][index_over]), axis=0)
+  cQt1 = np.concatenate((loaded_data['cQt1'][index_under], loaded_data['cQt1'][index_over]), axis=0)
+  cQt8 = np.concatenate((loaded_data['cQt8'][index_under], loaded_data['cQt8'][index_over]), axis=0)
+
+  
 
 # Load desired proportion of outputs
 outputs_all = np.concatenate((deltaNLL[index_under], deltaNLL[index_over]), axis=0)
@@ -135,6 +155,19 @@ inputs_all.append(ctlSi)
 inputs_all.append(ctlTi)
 inputs_all.append(ctli)
 inputs_all.append(ctp)
+
+if (wc_26):
+    inputs_all.append(cQq13)
+    inputs_all.append(cQq83)
+    inputs_all.append(cQq11)
+    inputs_all.append(ctq1)
+    inputs_all.append(cQq81)
+    inputs_all.append(ctq8)
+    inputs_all.append(ctt1)
+    inputs_all.append(cQQ1)
+    inputs_all.append(cQt1)
+    inputs_all.append(cQt8)
+ 
 inputs_all = np.stack(inputs_all, axis=1)
 
 # Randomize
