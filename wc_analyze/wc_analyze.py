@@ -1,7 +1,6 @@
 import nn_module as nnm
 import torch
 import numpy as np
-import math
 
 def Analyze_WC(model_path,**wc):
     #Load the model
