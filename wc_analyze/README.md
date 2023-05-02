@@ -10,7 +10,7 @@ The function that gives the dNLL of certain WC parameters is called `Analyze_WC`
 
 def Analyze_WC(model_path='./16603_11_model+.pt',**wc)
 
-The function first takes in the model path, then it takes in the wilson coefficient values. The wilson coefficients can either be put in as a single value, a list, a numpy array, or a torch tensor.
+The function first takes in the model path, then it takes in the wilson coefficient values. The wilson coefficients can either be put in as a single value, a list, a numpy array, or a torch tensor. It returns the dNLL of the given set of WCs.
 
 ### Example
 
