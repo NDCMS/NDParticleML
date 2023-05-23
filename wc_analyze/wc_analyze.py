@@ -42,6 +42,7 @@ def Analyze_WC(model_path,**wc):
     names['cQt1'] = 24
     names['cQt8'] = 25
 
+    #Figure out length of the inputs
     try:
         input_length = len(wc[list(wc.keys())[0]])
     except:
@@ -49,6 +50,7 @@ def Analyze_WC(model_path,**wc):
 
     inputs = torch.zeros(input_length,26).cuda(0)
     
+    #Convert everything to a cuda torch tensor
     for key in wc:
         try:
             if(type(wc[key]) == torch.Tensor):
@@ -59,4 +61,4 @@ def Analyze_WC(model_path,**wc):
                 inputs[:,names[key]] = torch.tensor([wc[key]]).cuda(0)
         except:
             raise RuntimeError(f'The Wilson Coefficient {key} is not supported.')
-    return model(inputs)
+    return (model(inputs) + parameters_save['min'])
