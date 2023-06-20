@@ -16,6 +16,8 @@ out_file = '15708_2'
 data_dict = {}
 pp = PdfPages(f'./graphs/{out_file}_validation.pdf')
 
+26wc = True
+
 # The mapping between the WC names and their positions in the data
 # There are Combine 1D scans over all 16 WCs
 names = {}
@@ -35,10 +37,25 @@ names['ctlSi'] = 12
 names['ctlTi'] = 13
 names['ctli'] = 14
 names['ctp'] = 15
+if (26wc):
+    names['cQq13'] = 16
+    names['cQq83'] = 17
+    names['cQq11'] = 18
+    names['ctq1'] = 19
+    names['cQq81'] = 20
+    names['ctq8'] = 21
+    names['ctt1'] = 22
+    names['cQQ1'] = 23
+    names['cQt1'] = 24
+    names['cQt8'] = 25
 
 # Pairs of WCs in existing Combine 2D scans
-WC2d_1 = ['cpQ3', 'cpQM', 'cpt', 'cptb', 'cQei', 'ctei', 'ctli', 'ctW'] # The first of the two WCs to graph
-WC2d_2 = ['cbW', 'ctG', 'ctp', 'cQl3i', 'cQlMi', 'ctlTi', 'ctlSi', 'ctZ'] # The second of the two WCs to graph
+if (26wv):
+    WC2d_1 = ['cQQ1', 'cQQ1', 'cQt1', 'ctG', 'ctW','cpQM','cQt1'] # The first of the two WCs to graph
+    WC2d_2 = ['cQt1', 'cQt8', 'cQt8', 'ctp', 'ctZ','cpt','ctt1'] # The second of the two WCs to graph
+else:
+    WC2d_1 = ['cpQ3', 'cpQM', 'cpt', 'cptb', 'cQei', 'ctei', 'ctli', 'ctW'] # The first of the two WCs to graph
+    WC2d_2 = ['cbW', 'ctG', 'ctp', 'cQl3i', 'cQlMi', 'ctlTi', 'ctlSi', 'ctZ'] # The second of the two WCs to graph
 
 # Hyperparameters for profiling
 profile_parameters = {}
@@ -73,8 +90,11 @@ best_model_state['5.bias'] = best_model_state.pop('4.bias')
 best_model_state['7.weight'] = best_model_state.pop('6.weight')
 best_model_state['7.bias'] = best_model_state.pop('6.bias')
 '''
+if (26wc):
+    model = nnm.create_model(26, 1, parameters_save, input_stats, output_stats)
+else:
+    model = nnm.create_model(16, 1, parameters_save, input_stats, output_stats)
 
-model = nnm.create_model(16, 1, parameters_save, input_stats, output_stats)
 model.load_state_dict(best_model_state)
 model.eval()
 
