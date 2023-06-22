@@ -16,7 +16,7 @@ out_file = '15708_2'
 data_dict = {}
 pp = PdfPages(f'./graphs/{out_file}_validation.pdf')
 
-26wc = True
+WCs = 26
 
 # The mapping between the WC names and their positions in the data
 # There are Combine 1D scans over all 16 WCs
@@ -37,7 +37,7 @@ names['ctlSi'] = 12
 names['ctlTi'] = 13
 names['ctli'] = 14
 names['ctp'] = 15
-if (26wc):
+if (WCs == 26):
     names['cQq13'] = 16
     names['cQq83'] = 17
     names['cQq11'] = 18
@@ -50,7 +50,7 @@ if (26wc):
     names['cQt8'] = 25
 
 # Pairs of WCs in existing Combine 2D scans
-if (26wv):
+if (WCs == 26):
     WC2d_1 = ['cQQ1', 'cQQ1', 'cQt1', 'ctG', 'ctW','cpQM','cQt1'] # The first of the two WCs to graph
     WC2d_2 = ['cQt1', 'cQt8', 'cQt8', 'ctp', 'ctZ','cpt','ctt1'] # The second of the two WCs to graph
 else:
@@ -90,10 +90,7 @@ best_model_state['5.bias'] = best_model_state.pop('4.bias')
 best_model_state['7.weight'] = best_model_state.pop('6.weight')
 best_model_state['7.bias'] = best_model_state.pop('6.bias')
 '''
-if (26wc):
-    model = nnm.create_model(26, 1, parameters_save, input_stats, output_stats)
-else:
-    model = nnm.create_model(16, 1, parameters_save, input_stats, output_stats)
+model = nnm.create_model(WCs, 1, parameters_save, input_stats, output_stats)
 
 model.load_state_dict(best_model_state)
 model.eval()
@@ -117,7 +114,7 @@ for key in names.keys():
     num_inputs = inputs.shape[0]
     # Now requires model to have been trained with the polynomial layer
     if (parameters_save['polynomial']):
-        inputs_all = np.zeros((num_inputs, 16))
+        inputs_all = np.zeros((num_inputs, WCs))
         inputs_all[:,names[key]] = inputs
     else:
         raise RuntimeError(f'Models without the polynomial layer are no longer supported! The number of inputs must match the number of WCs.')
@@ -143,9 +140,16 @@ data_dict['diff_1d_frozen_data'] = copy.deepcopy(diff_1d_frozen_data)
 target_1d_fake_profiled_data = {}
 for key in names.keys():
     loaded = np.load(f'likelihood_profiled_{key}.npz')
-    inputs = np.zeros((loaded['deltaNLL'].shape[0], 16))
-    for key2 in names.keys():
-        inputs[:,names[key2]] = loaded[key2]
+    inputs = np.zeros((loaded['deltaNLL'].shape[0], WCs))
+    if (WCs == 26):
+        for key2 in names.keys():
+            if key2 == key:
+                inputs[:,names[key2]] = loaded[key2]
+            else:
+                inputs[:,names[key2]] = loaded['trackedParam_' + key2]
+    else:
+        for key2 in names.keys():
+            inputs[:,names[key2]] = loaded[key2]
     target_1d_fake_profiled_data[key] = {'all_WCs': inputs, '2dNLL': loaded['deltaNLL']} # Inputs here contain all the WCs
     target_1d_fake_profiled_data[key]['2dNLL'] *= 2
     
@@ -186,7 +190,11 @@ data_dict['diff_1d_fake_profiled_data'] = copy.deepcopy(diff_1d_fake_profiled_da
 
 # Data for 2D frozen graphs compared to Combine scans
 target_2d_frozen_data = {}
-for num in np.arange(8):
+if (WCs == 26):
+    wc_to_compare = 7
+else:
+    wc_to_compare = 8
+for num in np.arange(wc_to_compare):
     WC1 = WC2d_1[num]
     WC2 = WC2d_2[num]
     loaded = np.load(f'likelihood_{WC1}_{WC2}.npz')
@@ -195,11 +203,11 @@ for num in np.arange(8):
 
 model_2d_frozen_data = {}
 diff_2d_frozen_data = {}
-for num in np.arange(8):
+for num in np.arange(wc_to_compare):
     inputs_y = target_2d_frozen_data[str(num)][WC2d_1[num]]
     inputs_x = target_2d_frozen_data[str(num)][WC2d_2[num]]
     num_inputs = inputs_y.shape[0]
-    inputs = np.zeros((num_inputs, 16))
+    inputs = np.zeros((num_inputs, WCs))
     inputs[:,names[WC2d_1[num]]] = inputs_y
     inputs[:,names[WC2d_2[num]]] = inputs_x
     inputs = torch.from_numpy(inputs).float().cuda()
@@ -227,13 +235,20 @@ data_dict['diff_2d_frozen_data'] = copy.deepcopy(diff_2d_frozen_data)
 # Data for 2D fake profiled graphs compared to Combine scans
 # Target data
 target_2d_profiled_data = {}
-for num in np.arange(8):
+for num in np.arange(wc_to_compare):
     WC1 = WC2d_1[num]
     WC2 = WC2d_2[num]
     loaded = np.load(f'likelihood_profiled_{WC1}_{WC2}.npz')
-    inputs = np.zeros((loaded['deltaNLL'].shape[0], 16))
-    for key2 in names.keys():
-        inputs[:,names[key2]] = loaded[key2]
+    inputs = np.zeros((loaded['deltaNLL'].shape[0], WCs))
+    if (WCs == 26):
+        for key2 in names.keys():
+            if key2 == WC1 or key2 == WC2:
+                inputs[:,names[key2]] = loaded[key2]
+            else:
+                inputs[:,names[key2]] = loaded['trackedParam_' + key2]
+    else:
+        for key2 in names.keys():
+            inputs[:,names[key2]] = loaded[key2]
     target_2d_profiled_data[str(num)] = {'all_WCs': inputs, '2dNLL': loaded['deltaNLL']} # Inputs here contain all the WCs
     target_2d_profiled_data[str(num)]['2dNLL'] *= 2
 
@@ -243,7 +258,7 @@ data_dict['target_2d_profiled_data'] = copy.deepcopy(target_2d_profiled_data)
 
 # Model data
 model_2d_fake_profiled_data = {}
-for num in np.arange(8):
+for num in np.arange(wc_to_compare):
     inputs = target_2d_profiled_data[str(num)]['all_WCs']
     num_inputs = inputs.shape[0]
     inputs = torch.from_numpy(inputs).float().cuda()
@@ -316,8 +331,8 @@ data_dict['diff_1d_profiled_data'] = copy.deepcopy(diff_1d_profiled_data)
 # Model data
 model_2d_profiled_data = {}
 # Because this takes some time, select which graphs you want to make.
-nums = [0,1,2,3,4,5,6,7]
-for num in nums:
+
+for num in range(wc_to_compare):
     inputs = target_2d_profiled_data[str(num)]['all_WCs']
     (min_WCs_scanned, outputs) = nnm.profile(model, inputs, [names[WC2d_1[num]], names[WC2d_2[num]]], profile_parameters)
     min_WCs_scanned = min_WCs_scanned.cpu().detach().numpy()
@@ -424,7 +439,7 @@ for key in zoomed_fake_profiled_1d_graphs.keys():
 
 # 2D frozen graphs compared to Combine scans
 frozen_2d_graphs = {}
-for num in np.arange(8):
+for num in np.arange(wc_to_compare):
     target_2d_frozen_data[str(num)]['2dNLL'] -= target_2d_frozen_data[str(num)]['2dNLL'].min()
     model_2d_frozen_data[str(num)]['2dNLL'] -= model_2d_frozen_data[str(num)]['2dNLL'].min()
     frozen_2d_graphs[str(num)] = plt.subplots()
@@ -516,7 +531,7 @@ for key in zoomed_profiled_1d_graphs.keys():
 
 # 2D real profiled graphs compared to Combine scans
 profiled_2d_graphs = {}
-for num in nums:
+for num in range(wc_to_compare):
     target_2d_profiled_data[str(num)]['2dNLL'] -= target_2d_profiled_data[str(num)]['2dNLL'].min()
     model_2d_profiled_data[str(num)]['2dNLL'] -= model_2d_profiled_data[str(num)]['2dNLL'].min()
     profiled_2d_graphs[str(num)] = plt.subplots()
