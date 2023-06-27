@@ -303,7 +303,7 @@ for key in names.keys():
     # Now requires model to have been trained with the polynomial layer
     if not (parameters_save['polynomial']):
         raise RuntimeError(f'Models without the polynomial layer are no longer supported! The number of inputs must match the number of WCs.')
-    inputs_all = np.zeros((num_inputs, 16))
+    inputs_all = np.zeros((num_inputs, WCs))
     inputs_all[:,names[key]] = inputs
     # profile() currently takes inputs as an np array not tensor. I know, confusing, so to be fixed in the future.
     (min_WCs_scanned, outputs) = nnm.profile(model, inputs_all, [names[key]], profile_parameters)
@@ -474,7 +474,7 @@ for key in diff_frozen_2d_graphs.keys():
 
 # 2D fake profiled graphs compared to Combine scans
 fake_profiled_2d_graphs = {}
-for num in np.arange(8):
+for num in np.arange(wc_to_compare):
     target_2d_profiled_data[str(num)]['2dNLL'] -= target_2d_profiled_data[str(num)]['2dNLL'].min()
     model_2d_fake_profiled_data[str(num)]['2dNLL'] -= model_2d_fake_profiled_data[str(num)]['2dNLL'].min()
     fake_profiled_2d_graphs[str(num)] = plt.subplots()
