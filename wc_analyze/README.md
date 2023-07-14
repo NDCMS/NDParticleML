@@ -1,19 +1,19 @@
 # Wilson Coefficient Analysis
 
-This folder contains everything needed to analyze the dNLL of Wilson Coefficient values.
+This folder contains everything needed to analyze the dNLL of Wilson Coefficient (WC) values.
 - `wc_analyze.ipynb`: A notebook to easily analyze the dNLLs of different WCs.
 - 'wc_analyze.py': A script that holds the analysis function.
 
 ## Running the Code
-To analyze a given Wilson Coefficient, either use the jupyter notebook or the python script.
-The function that gives the dNLL of certain WCs is called `Analyze_WC`.
+To analyze a given set of WCs, use either the Jupyter Notebook or the Python script.
+The function responsible for calculating the dNLL for a particular set of WCs is referred to as `Analyze_WC`.
 
 def Analyze_WC(model_path='./16603_11_model+.pt',**wc)
 
-The function first takes in the model path, then it takes in the Wilson coefficient values. The Wilson coefficients can either be put in as a single value, a list, a numpy array, or a torch tensor. It returns the dNLL of the given set of WCs.
+The function accepts the model path as the first argument, followed by the WC values. These values can be provided as a single value, a list, a NumPy array, or a Torch tensor. The function calculates and returns the dNLL for the inputted WCs.
 
 ### Important Note 
-The data the DNN was trained had a minimum of around -42. Since it is better for a DNN to be trained on data that has a minimum of 0, the neural network was trained with -42 subtracted from its outputs. Thus, this function adds the original minimum back into the output, so, if combine outputted -42, this function also outputs that value (whereas, on its own, the DNN would output 0).
+The training data used for the DNN had a minimum of around -42. To ensure that the DNN was trained with a minimum of 0, the network was trained by subtracting -42 from the target outputs. Therefore, this function adds -42 into its output in order to restore the original minimum value.
 
 ### Example
 
